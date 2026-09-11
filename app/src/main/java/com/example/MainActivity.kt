@@ -7,20 +7,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
-import com.example.worker.NotificationWorker
-import java.util.concurrent.TimeUnit
 import com.example.ui.navigation.NavGraph
 import com.example.ui.theme.MyApplicationTheme
 import com.example.util.UnityAdsManager
-
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-
 import com.example.ui.components.NetworkStatusOverlay
-
 import androidx.lifecycle.lifecycleScope
 import com.example.data.repository.ConfigRepository
 import com.example.util.AdManager
@@ -28,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
   private val configRepository = ConfigRepository()
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,16 +35,20 @@ class MainActivity : ComponentActivity() {
       }
     }
 
-    // Initialize ads and background workers safely so they never block or crash UI startup
-    try {
-      UnityAdsManager.initialize(this)
-    } catch (e: Throwable) {
-      android.util.Log.w("MainActivity", "UnityAdsManager init error: ${e.message}")
-    }
-
-    // Listen to remote AppConfig updates (from Admin Panel)
+    // Initialize ads safely in background coroutine so it never hangs UI or causes startup crash
     lifecycleScope.launch {
       try {
+        delay(1500L)
+        UnityAdsManager.initialize(this@MainActivity)
+      } catch (e: Throwable) {
+        android.util.Log.w("MainActivity", "UnityAdsManager init error: ${e.message}")
+      }
+    }
+
+    // Listen to remote AppConfig updates (from Admin Panel) safely
+    lifecycleScope.launch {
+      try {
+        delay(2000L)
         configRepository.getConfigFlow().collect { config ->
           try {
             UnityAdsManager.updateConfig(
@@ -73,10 +68,9 @@ class MainActivity : ComponentActivity() {
       }
     }
 
-    // Periodic check for timed interstitial ad (default 5 minutes or configured from Admin Panel)
+    // Periodic check for timed interstitial ad
     lifecycleScope.launch {
       try {
-        // Give initial warm-up before first check
         delay(60_000L)
         while (true) {
           delay(30_000L)
@@ -87,17 +81,6 @@ class MainActivity : ComponentActivity() {
       } catch (e: Throwable) {
         android.util.Log.w("MainActivity", "Timed interstitial loop error: ${e.message}")
       }
-    }
-
-    try {
-      val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES).build()
-      WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-          "NotificationWorker",
-          ExistingPeriodicWorkPolicy.KEEP,
-          workRequest
-      )
-    } catch (e: Throwable) {
-      android.util.Log.w("MainActivity", "WorkManager init error: ${e.message}")
     }
   }
 }

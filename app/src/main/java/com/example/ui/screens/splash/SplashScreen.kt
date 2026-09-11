@@ -4,8 +4,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Redeem
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,7 +18,6 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.theme.PrimaryPurple
 import com.example.ui.theme.PrimaryViolet
-import com.example.ui.theme.AccentYellow
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.google.firebase.auth.FirebaseAuth
@@ -28,14 +25,19 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(onGetStarted: () -> Unit, onAlreadyLoggedIn: () -> Unit) {
-    val auth = FirebaseAuth.getInstance()
     var isChecking by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        delay(1500)
-        if (auth.currentUser != null) {
-            onAlreadyLoggedIn()
-        } else {
+        delay(1200)
+        try {
+            val auth = FirebaseAuth.getInstance()
+            if (auth.currentUser != null) {
+                onAlreadyLoggedIn()
+            } else {
+                isChecking = false
+            }
+        } catch (e: Throwable) {
+            android.util.Log.e("SplashScreen", "Auth check fallback: ${e.message}")
             isChecking = false
         }
     }
@@ -55,7 +57,7 @@ fun SplashScreen(onGetStarted: () -> Unit, onAlreadyLoggedIn: () -> Unit) {
             modifier = Modifier.padding(24.dp)
         ) {
             Spacer(modifier = Modifier.weight(1f))
-            
+
             // TaskEarn App Logo
             Image(
                 painter = painterResource(id = R.drawable.app_logo),
@@ -64,18 +66,18 @@ fun SplashScreen(onGetStarted: () -> Unit, onAlreadyLoggedIn: () -> Unit) {
                     .size(130.dp)
                     .clip(RoundedCornerShape(28.dp))
             )
-            
+
             Spacer(modifier = Modifier.height(32.dp))
-            
+
             Text(
                 text = "TaskEarn",
                 color = TextPrimary,
                 fontSize = 40.sp,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Text(
                 text = "Complete Tasks, Earn Coins & Redeem Rewards",
                 color = TextSecondary,
@@ -83,9 +85,9 @@ fun SplashScreen(onGetStarted: () -> Unit, onAlreadyLoggedIn: () -> Unit) {
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
-            
+
             Spacer(modifier = Modifier.weight(1f))
-            
+
             if (!isChecking) {
                 Button(
                     onClick = onGetStarted,
@@ -105,9 +107,12 @@ fun SplashScreen(onGetStarted: () -> Unit, onAlreadyLoggedIn: () -> Unit) {
                     )
                 }
             } else {
-                Spacer(modifier = Modifier.height(56.dp))
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(36.dp)
+                )
             }
-            
+
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
