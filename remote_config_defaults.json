@@ -1,0 +1,12 @@
+{
+  "daily_bonus_amount": 100,
+  "video_ad_reward": 20,
+  "referral_reward": 500,
+  "spin_wheel_amounts": "[50, 100, 200, 300, 500, 800, 1000]",
+  "daily_video_limit": 20,
+  "daily_spin_limit": 5,
+  "daily_scratch_limit": 3,
+  "coin_to_inr_rate": 100,
+  "minimum_withdraw_inr": 10,
+  "unity_game_id": "5846818"
+}

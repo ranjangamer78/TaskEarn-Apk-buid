@@ -1,0 +1,2893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskEarn Advanced Admin</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root { --bg: #12101E; --surface: #1E1B2E; --primary: #7B3FE4; --accent: #F4B400; --text: #fff; --text-muted: #A09DB0; --danger: #F44336; --success: #00BFA5; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; }
+        #sidebar { width: 250px; background: rgba(30,27,46,0.9); border-right: 1px solid rgba(255,255,255,0.1); padding: 20px 0; display: flex; flex-direction: column; overflow-y: auto; }
+        .brand { font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 30px; color: var(--accent); }
+        .nav-item { padding: 15px 20px; cursor: pointer; transition: all 0.3s; border-left: 4px solid transparent; }
+        .nav-item:hover, .nav-item.active { background: rgba(123,63,228,0.2); border-left: 4px solid var(--primary); color: var(--primary); }
+        #main-content { flex-grow: 1; padding: 30px; overflow-y: auto; }
+        .card { background: var(--surface); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+        .grid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: linear-gradient(135deg, var(--primary), #5B2FC2); border-radius: 16px; padding: 20px; }
+        .stat-card h3 { margin: 0; font-size: 14px; opacity: 0.9; }
+        .stat-card .value { font-size: 32px; font-weight: bold; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { color: var(--text-muted); font-weight: 500; font-size: 14px; }
+        button { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        button.danger { background: var(--danger); }
+        button.success { background: var(--success); }
+        input, select, textarea { width: 100%; padding: 10px; margin-bottom: 15px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; box-sizing: border-box; }
+        .hidden { display: none !important; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .badge.pending { background: #FF9800; color: black; }
+        .badge.approved { background: var(--success); color: white; }
+        .badge.rejected { background: var(--danger); color: white; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: var(--text-muted); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .modal-box { background: var(--surface); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 25px; max-width: 580px; width: 92%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+        .modal-header h3 { margin: 0; color: var(--accent); }
+        .modal-close { background: none; border: none; font-size: 22px; color: var(--text-muted); cursor: pointer; }
+        .btn-edit { background: #0288D1; }
+        .search-bar { padding: 10px 15px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); color: #fff; width: 320px; margin-bottom: 15px; }
+        @media (max-width: 768px) {
+            body { height: auto; min-height: 100vh; }
+            #app-screen { flex-direction: column !important; }
+            #sidebar { width: 100% !important; height: auto !important; max-height: none; flex-direction: row !important; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 10px 5px !important; border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.1); }
+            .brand { display: none !important; }
+            .nav-item { padding: 8px 12px !important; white-space: nowrap; font-size: 13px; border-left: none !important; border-bottom: 3px solid transparent !important; }
+            .nav-item.active { border-left: none !important; border-bottom: 3px solid var(--primary) !important; background: rgba(123,63,228,0.25) !important; }
+            #main-content { padding: 15px !important; }
+            .grid-cards { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+            .stat-card { padding: 14px !important; }
+            .stat-card .value { font-size: 24px !important; }
+            .search-bar { width: 100% !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="auth-screen" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+        <div class="card" style="width: 340px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div style="font-size: 36px; margin-bottom: 8px;">👑</div>
+            <h2 style="margin: 0 0 8px 0; color: var(--accent);">TaskEarn Admin Panel</h2>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
+                Complete management dashboard for users, withdrawal options, tasks, and settings.
+            </p>
+
+            <button onclick="enterAdminDirectly()" style="width: 100%; background: linear-gradient(135deg, #00BFA5, #00897b); font-size: 15px; padding: 12px; margin-bottom: 15px; font-weight: bold; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,191,165,0.3); cursor: pointer;">
+                ⚡ Open Admin Panel Directly
+            </button>
+
+            <div style="position: relative; margin: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--surface); padding: 0 10px; color: var(--text-muted); font-size: 11px; letter-spacing: 0.5px;">OR AUTHENTICATE</span>
+            </div>
+
+            <input type="email" id="email" placeholder="Admin Email" style="text-align: left;">
+            <input type="password" id="password" placeholder="Password" style="text-align: left;">
+            <button onclick="login()" style="width: 100%; margin-bottom: 8px;">Login with Firebase</button>
+            <button onclick="register()" style="width: 100%; background-color: #4CAF50;">Register (First Time)</button>
+            <p id="auth-error" style="color: var(--danger); text-align: center; margin-top: 10px; font-size: 13px;"></p>
+        </div>
+    </div>
+
+    <div id="app-screen" class="hidden" style="width: 100%; display: flex;">
+        <div id="sidebar">
+            <div class="brand" style="display: flex; align-items: center; gap: 10px; padding: 0 15px;">
+                <div style="width: 34px; height: 34px; min-width: 34px; background: linear-gradient(135deg, #7B3FE4, #FFB300); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 8px rgba(123,63,228,0.4);">👑</div>
+                <span style="font-weight: 800; font-size: 18px; color: var(--accent);">TaskEarn Admin</span>
+            </div>
+            <div class="nav-item active" onclick="switchTab('dashboard')">Dashboard</div>
+            <div class="nav-item" onclick="switchTab('users')">Users & Blocking</div>
+            <div class="nav-item" onclick="switchTab('withdrawals')">Withdrawals</div>
+            <div class="nav-item" onclick="switchTab('settings')">App Config</div>
+            <div class="nav-item" onclick="switchTab('page-notices')">📢 Page Notices (App Alerts)</div>
+            <div class="nav-item" onclick="switchTab('banners')">Banners</div>
+            <div class="nav-item" onclick="switchTab('offers')">Custom Offers</div>
+            <div class="nav-item" onclick="switchTab('games')">🎮 Play & Earn Games</div>
+            <div class="nav-item" onclick="switchTab('coupons')">🎫 Coupon Codes</div>
+            <div class="nav-item" onclick="switchTab('payment-methods')">Payment Methods</div>
+            <div class="nav-item" onclick="switchTab('notifications')">Push Notifications</div>
+            <div class="nav-item" onclick="logout()" style="margin-top: auto; color: var(--danger);">Logout</div>
+        </div>
+
+        <div id="main-content">
+            <!-- DASHBOARD -->
+            <div id="dashboard" class="section active">
+                <h2>Dashboard Overview</h2>
+                <div class="grid-cards">
+                    <div class="stat-card">
+                        <h3>Total Users</h3>
+                        <div class="value" id="stat-users">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Pending Withdrawals</h3>
+                        <div class="value" id="stat-pending">0</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--success), #009688);">
+                        <h3>Successful Withdrawals</h3>
+                        <div class="value" id="stat-success">0</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--accent), #FF9800);">
+                        <h3>Total Money Sent (₹)</h3>
+                        <div class="value" id="stat-money">0</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #7b1fa2, #ab47bc);">
+                        <h3>Active Coupons</h3>
+                        <div class="value" id="stat-coupons">0</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #0288D1, #0097A7);">
+                        <h3>Custom Offers / Tasks</h3>
+                        <div class="value" id="stat-offers">0</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #E65100, #F57C00);">
+                        <h3>Play Games</h3>
+                        <div class="value" id="stat-games">0</div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <h3 style="margin-top: 0; color: var(--accent);">⚡ Quick Actions</h3>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button onclick="switchTab('withdrawals')" style="background: linear-gradient(135deg, #FF9800, #F57C00);">💸 Manage Withdrawals</button>
+                        <button onclick="switchTab('users')" style="background: linear-gradient(135deg, #7B3FE4, #5B2FC2);">👥 Search & Manage Users</button>
+                        <button onclick="switchTab('offers'); showOfferForm();" style="background: linear-gradient(135deg, #0288D1, #0097A7);">➕ Add Custom Task / Offer</button>
+                        <button onclick="switchTab('coupons'); showCouponForm();" style="background: linear-gradient(135deg, #00BFA5, #00897B);">🎫 Create Coupon Code</button>
+                        <button onclick="switchTab('payment-methods'); showPaymentForm();" style="background: linear-gradient(135deg, #1b5e20, #2e7d32);">💳 Add Withdrawal Option</button>
+                        <button onclick="switchTab('settings')" style="background: #37474F;">⚙️ App Config & Links</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- USERS -->
+            <div id="users" class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <h2>Users & Account Management</h2>
+                    <input type="text" id="user-search-input" class="search-bar" placeholder="🔍 Search name, email, or UID..." oninput="filterUsersList()">
+                </div>
+                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="btn-user-all" onclick="setUserFilter('all')" style="background: var(--primary);">All Users</button>
+                    <button id="btn-user-active" onclick="setUserFilter('active')" style="background: #2E2B3E;">Active Only</button>
+                    <button id="btn-user-blocked" onclick="setUserFilter('blocked')" style="background: #2E2B3E;">Blocked Only</button>
+                </div>
+                <div class="card" style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User / Email / UID</th>
+                                <th>Name</th>
+                                <th>Balance (Coins)</th>
+                                <th>Friends Invited</th>
+                                <th>Last Login</th>
+                                <th>Device ID</th>
+                                <th>Refer Code</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- USER EDIT MODAL -->
+            <div id="user-modal" class="modal-overlay hidden">
+                <div class="modal-box">
+                    <div class="modal-header">
+                        <h3>✏️ Edit User Account Data</h3>
+                        <button class="modal-close" onclick="closeUserModal()">×</button>
+                    </div>
+                    <input type="hidden" id="edit-user-uid">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div style="grid-column: span 2;">
+                            <label style="font-size:12px;color:var(--text-muted);">Firebase UID (Read Only)</label>
+                            <input type="text" id="edit-user-uid-display" readonly style="opacity:0.6;background:#111;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;color:var(--text-muted);">Full Name</label>
+                            <input type="text" id="edit-user-name">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;color:var(--text-muted);">Email Address</label>
+                            <input type="email" id="edit-user-email">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;color:var(--text-muted);">Current Coins Balance</label>
+                            <input type="number" id="edit-user-balance">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;color:var(--text-muted);">Lifetime Coins Earned</label>
+                            <input type="number" id="edit-user-lifetime">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;color:var(--text-muted);">👥 Friends Invited</label>
+                            <input type="number" id="edit-user-friends" min="0">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;color:var(--text-muted);">🕒 Last Login (Read Only)</label>
+                            <input type="text" id="edit-user-lastlogin" readonly style="opacity:0.7;background:#111;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;color:var(--text-muted);">Referral Code</label>
+                            <input type="text" id="edit-user-refer-code" style="text-transform:uppercase;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;color:var(--text-muted);">Referred By Code</label>
+                            <input type="text" id="edit-user-referred-by" style="text-transform:uppercase;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;color:var(--text-muted);">📱 Bound Device ID (Anti-Fraud)</label>
+                            <input type="text" id="edit-user-device-id" placeholder="Android Hardware ID">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;color:var(--text-muted);">Phone Number</label>
+                            <input type="text" id="edit-user-phone" placeholder="Optional phone number">
+                        </div>
+                        <div style="grid-column: span 2; display: flex; align-items: center; justify-content: space-between; padding: 10px; background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.2); border-radius: 8px;">
+                            <div style="font-size: 12px; color: #00e5ff;">
+                                <strong>Device Multi-Account Reset:</strong> If user got blocked by device limit or changed device, you can clear their bound hardware ID.
+                            </div>
+                            <button type="button" style="background:#00bfa5;font-size:12px;padding:6px 12px;white-space:nowrap;" onclick="clearUserDeviceBinding()">Unbind Device</button>
+                        </div>
+                        <div style="grid-column: span 2; display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(244,67,54,0.1); border: 1px solid rgba(244,67,54,0.3); border-radius: 8px;">
+                            <input type="checkbox" id="edit-user-blocked" style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
+                            <label for="edit-user-blocked" style="color: var(--danger); font-weight: bold; cursor: pointer; margin: 0;">Block User Account (Prevents logging in and earning)</label>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                        <button class="danger" onclick="closeUserModal()">Cancel</button>
+                        <button class="success" onclick="saveUserModalData()">💾 Save All Changes</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- USER EARNING & TRANSACTION HISTORY MODAL -->
+            <div id="user-history-modal" class="modal-overlay hidden">
+                <div class="modal-box" style="max-width: 780px;">
+                    <div class="modal-header">
+                        <h3>📜 User Earning Points & Transaction History</h3>
+                        <button class="modal-close" onclick="closeUserHistoryModal()">×</button>
+                    </div>
+                    <div id="user-history-info" style="background: rgba(123,63,228,0.15); border: 1px solid rgba(123,63,228,0.3); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; font-size: 13px;">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                        <table>
+                            <thead>
+                                <tr style="position: sticky; top: 0; background: #1E1B2E; z-index: 1;">
+                                    <th>Date & Time</th>
+                                    <th>Earn Source / Title</th>
+                                    <th>Type</th>
+                                    <th>Coins</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-history-body">
+                                <tr><td colspan="5" style="text-align:center;color:#888;padding:20px;">Loading history records...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                        <button style="background: var(--primary);" onclick="closeUserHistoryModal()">Close</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WITHDRAWALS -->
+            <div id="withdrawals" class="section">
+                <h2>Withdrawal Requests</h2>
+                <div class="card" style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Method</th>
+                                <th>Category</th>
+                                <th>Details</th>
+                                <th>Coins</th>
+                                <th>Rupees</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="withdrawals-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            
+            <!-- BANNERS -->
+            <div id="banners" class="section">
+                <div class="header">
+                    <h2>Home Sliding Banners</h2>
+                    <button onclick="showBannerForm()">+ Add Banner</button>
+                </div>
+                <div id="banner-form" class="card hidden">
+                    <input type="text" id="banner-image" placeholder="Image URL">
+                    <input type="text" id="banner-link" placeholder="Target Link (Optional)">
+                    <div style="margin-top: 10px;">
+                        <button onclick="saveBanner()">Save Banner</button>
+                        <button class="danger" onclick="hideBannerForm()">Cancel</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <table>
+                        <thead>
+                            <tr><th>Image URL</th><th>Link</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="banners-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SETTINGS -->
+            <div id="settings" class="section">
+                <h2>App Configuration</h2>
+                <div class="card">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <h3>Rewards & Limits</h3>
+                            <div class="form-group"><label>Daily Bonus Coins</label><input type="number" id="cfg-daily"></div>
+                            <div class="form-group"><label>Referral Reward (Referrer)</label><input type="number" id="cfg-ref-referrer"></div>
+                            <div class="form-group"><label>Referral Reward (Referee)</label><input type="number" id="cfg-ref-referee"></div>
+                            <div class="form-group"><label>Daily Streak Coins (Comma separated 7 values)</label><input type="text" id="cfg-streak" placeholder="10,20,30,40,50,60,100"></div>
+                            
+                            <!-- Dynamic Spin Wheel Min & Max Reward -->
+                            <div style="background: rgba(123,63,228,0.15); border: 1px solid rgba(123,63,228,0.4); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                                <h4 style="margin: 0 0 6px 0; color: #b388ff;">🎡 Spin Wheel Dynamic Rewards (Min - Max)</h4>
+                                <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 8px 0;">User earns a random coin amount between Min and Max on each spin (e.g. 1 to 200).</p>
+                                <div style="display: flex; gap: 10px;">
+                                    <div style="flex: 1;"><label style="font-size:12px;">Min Coins</label><input type="number" id="cfg-spin-min" placeholder="1" value="1" min="1"></div>
+                                    <div style="flex: 1;"><label style="font-size:12px;">Max Coins</label><input type="number" id="cfg-spin-max" placeholder="200" value="200" min="1"></div>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;"><label style="font-size:12px;">Daily Spin Limit</label><input type="number" id="cfg-spin-limit" value="10"></div>
+                            </div>
+
+                            <!-- Dynamic Scratch Card Min & Max Reward -->
+                            <div style="background: rgba(233,30,99,0.15); border: 1px solid rgba(233,30,99,0.4); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                                <h4 style="margin: 0 0 6px 0; color: #ff80ab;">🎟️ Scratch Card Dynamic Rewards (Min - Max)</h4>
+                                <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 8px 0;">User earns a random coin amount between Min and Max on each scratch (e.g. 1 to 200).</p>
+                                <div style="display: flex; gap: 10px;">
+                                    <div style="flex: 1;"><label style="font-size:12px;">Min Coins</label><input type="number" id="cfg-scratch-min" placeholder="1" value="1" min="1"></div>
+                                    <div style="flex: 1;"><label style="font-size:12px;">Max Coins</label><input type="number" id="cfg-scratch-max" placeholder="200" value="200" min="1"></div>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;"><label style="font-size:12px;">Daily Scratch Limit</label><input type="number" id="cfg-scratch-limit" value="10"></div>
+                            </div>
+
+                            <div class="form-group"><label>Video Earn Reward</label><input type="number" id="cfg-video-reward"></div>
+                            <div class="form-group"><label>Video Earn Daily Limit</label><input type="number" id="cfg-video-limit"></div>
+                            <div class="form-group"><label>Coin to Rupee Rate (Coins per ₹1)</label><input type="number" id="cfg-rate"></div>
+
+                            <!-- eSewa Online Payment Limits -->
+                            <div style="background: rgba(46,125,50,0.15); border: 1px solid rgba(46,125,50,0.4); padding: 12px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px;">
+                                <h4 style="margin: 0 0 6px 0; color: #81c784;">🇳🇵 eSewa Online Payment Limits (NPR)</h4>
+                                <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 8px 0;">Enforces min and max withdrawal limits for eSewa in user wallet (e.g. Min 100, Max 500 NPR).</p>
+                                <div style="display: flex; gap: 10px;">
+                                    <div style="flex: 1;"><label style="font-size:12px;">Min Rupees (NPR)</label><input type="number" id="cfg-esewa-min" placeholder="100" value="100"></div>
+                                    <div style="flex: 1;"><label style="font-size:12px;">Max Rupees (NPR)</label><input type="number" id="cfg-esewa-max" placeholder="500" value="500"></div>
+                                </div>
+                            </div>
+
+                            <!-- Free Fire Diamond Game Item Rate -->
+                            <div style="background: rgba(255,109,0,0.15); border: 1px solid rgba(255,109,0,0.4); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                                <h4 style="margin: 0 0 6px 0; color: #ffab40;">💎 Game Item: Free Fire Diamond Top-Up</h4>
+                                <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 8px 0;">Number of Diamonds given per 100 Rupees (Default: 115 Diamonds for 100 Rupees / 1000 Coins).</p>
+                                <div class="form-group" style="margin-bottom:0;"><label style="font-size:12px;">Diamonds per 100 Rupees</label><input type="number" id="cfg-ff-diamond-rate" placeholder="115" value="115"></div>
+                            </div>
+
+                            <!-- Game Daily Limit & 5 Min Cooldown -->
+                            <div style="background: rgba(255,152,0,0.15); border: 1px solid rgba(255,152,0,0.4); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                                <h4 style="margin: 0 0 6px 0; color: #ffb74d;">🎮 Games Daily Limit & Cooldown (Minutes)</h4>
+                                <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 8px 0;">Playing any game sets a cooldown for all games. Users can skip the cooldown by watching an Interstitial_Android ad.</p>
+                                <div style="display: flex; gap: 10px;">
+                                    <div style="flex: 1;"><label style="font-size:12px;">Daily Games Limit</label><input type="number" id="cfg-game-daily-limit" placeholder="10" value="10"></div>
+                                    <div style="flex: 1;"><label style="font-size:12px;">Cooldown (Minutes)</label><input type="number" id="cfg-game-cooldown" placeholder="5" value="5"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <!-- In-App Update Notice System -->
+                            <div style="background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.3); padding: 14px; border-radius: 10px; margin-bottom: 20px;">
+                                <h3 style="margin: 0 0 8px 0; color: #00E5FF; display: flex; align-items: center; gap: 8px;">
+                                    <span>🚀 In-App Update Notice Popup</span>
+                                </h3>
+                                <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 12px 0;">
+                                    Shows update notice dialog with app logo, custom notice title, description, and "Update App Now" button linking to your download link.
+                                </p>
+                                <div class="form-group" style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px;">
+                                    <input type="checkbox" id="cfg-update-enabled" style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
+                                    <label for="cfg-update-enabled" style="color: #00E5FF; font-weight: bold; cursor: pointer; margin: 0;">Show Update Notice in User App</label>
+                                </div>
+
+                                <!-- App Version Target Selection -->
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                                    <div>
+                                        <label style="font-size: 12px; color: #00E5FF; font-weight: bold;">New Version Name (e.g. 1.1)</label>
+                                        <input type="text" id="cfg-update-version-name" placeholder="e.g. 1.1">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: #00E5FF; font-weight: bold;">New Version Code (e.g. 2)</label>
+                                        <input type="number" id="cfg-update-version-code" placeholder="e.g. 2">
+                                    </div>
+                                </div>
+                                <div style="background: rgba(0,229,255,0.1); padding: 8px 10px; border-radius: 6px; margin-bottom: 12px;">
+                                    <p style="font-size: 11px; color: #80deea; margin: 0;">
+                                        ✨ <b>Smart Version Filtering:</b> If you set version to <b>1.1</b>, users who download or are already running version 1.1 will <b>NOT</b> see the update notice! Older versions (1.0) will see it.
+                                    </p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Update Notice Name / Title</label>
+                                    <input type="text" id="cfg-update-title" placeholder="e.g. New Version Available!">
+                                </div>
+                                <div class="form-group">
+                                    <label>Update Notice Description / What's New</label>
+                                    <textarea id="cfg-update-desc" rows="2" placeholder="e.g. High-reward tasks, faster payouts, and new games added. Update now to continue earning coins."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label style="color:#00e676;font-weight:bold;">📲 App Update Download Link</label>
+                                    <input type="text" id="cfg-update-link" placeholder="https://play.google.com/store/apps/details?id=com.example or APK URL">
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="cfg-update-cancelable" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                                    <label for="cfg-update-cancelable" style="font-size: 13px; color: var(--text-muted); cursor: pointer; margin: 0;">Allow User to Dismiss / Remind Me Later (Uncheck for Force Update)</label>
+                                </div>
+                            </div>
+
+                            <h3>Referral & Contact Channels</h3>
+                            <div class="form-group">
+                                <label style="color:#00e676;font-weight:bold;">📲 App Download Link (Sent in Invite Message)</label>
+                                <input type="text" id="cfg-app-link" placeholder="https://play.google.com/store/apps/details?id=com.example">
+                            </div>
+                            <div class="form-group">
+                                <label>🟢 WhatsApp Support (Link or wa.me/number)</label>
+                                <input type="text" id="cfg-whatsapp" placeholder="https://wa.me/9779800000000">
+                            </div>
+                            <div class="form-group">
+                                <label>🔴 YouTube Channel Link</label>
+                                <input type="text" id="cfg-youtube" placeholder="https://youtube.com/@channel">
+                            </div>
+                            <div class="form-group">
+                                <label>🎵 TikTok Profile Link</label>
+                                <input type="text" id="cfg-tiktok" placeholder="https://tiktok.com/@username">
+                            </div>
+                            <div class="form-group">
+                                <label>✈️ Telegram Channel / Group Link</label>
+                                <input type="text" id="cfg-telegram" placeholder="https://t.me/channel">
+                            </div>
+                            <div class="form-group">
+                                <label>📸 Instagram Profile Link</label>
+                                <input type="text" id="cfg-instagram" placeholder="https://instagram.com/profile">
+                            </div>
+                            <div class="form-group">
+                                <label>✉️ Support Email Address</label>
+                                <input type="email" id="cfg-email" placeholder="support@taskearn.com">
+                            </div>
+                            
+                            <h3 style="margin-top:25px;color:#ff9800;">Unity Ads Configuration</h3>
+                            <div class="form-group"><label><input type="checkbox" id="cfg-ads-enabled"> Enable All Ads</label></div>
+                            <div class="form-group"><label><input type="checkbox" id="cfg-unity-enabled"> Enable Unity Ads</label></div>
+                            <div class="form-group">
+                                <label>Unity Game ID (Android)</label>
+                                <input type="text" id="cfg-unity-game-id" placeholder="e.g. 5691234">
+                            </div>
+                            <div class="form-group">
+                                <label>Unity Rewarded Video Placement ID</label>
+                                <input type="text" id="cfg-unity-placement" placeholder="e.g. Rewarded_Android">
+                            </div>
+                            <div class="form-group">
+                                <label>Unity Interstitial Placement ID</label>
+                                <input type="text" id="cfg-unity-interstitial" placeholder="e.g. Interstitial_Android">
+                            </div>
+                            <div class="form-group">
+                                <label>Unity Banner Placement ID</label>
+                                <input type="text" id="cfg-unity-banner" placeholder="e.g. Banner_Android">
+                            </div>
+                            <div class="form-group" style="background: rgba(255,179,0,0.1); border: 1px solid rgba(255,179,0,0.3); padding: 12px; border-radius: 8px;">
+                                <label style="color: #ffb300; font-weight: bold;">⏱️ Interstitial Ads Interval (Minutes)</label>
+                                <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 6px 0;">Automatically shows interstitial ad every N minutes while using the app (Default 5 min).</p>
+                                <input type="number" id="cfg-interstitial-interval" min="1" max="60" value="5" placeholder="5">
+                            </div>
+                            <div class="form-group">
+                                <label><input type="checkbox" id="cfg-unity-test-mode"> Unity Ads Test Mode</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="saveSettings()" style="width: 100%; margin-top: 20px; padding: 12px; font-size: 16px;">💾 Save All Configuration</button>
+                </div>
+            </div>
+
+            <!-- OFFERS -->
+            <div id="offers" class="section">
+                <div class="header">
+                    <div>
+                        <h2>Custom Offers & Tasks</h2>
+                        <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
+                            Configure tasks with reward coins, wait timers, and repetition rules (1-Day Only / One-time vs. Daily Repeating tasks).
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button style="background: #ff9800; color: #000; font-weight: bold;" onclick="resetAllOffersForUsers()">🔄 Reset ALL Tasks for Users</button>
+                        <button onclick="showOfferForm()">+ Add Custom Offer / Task</button>
+                    </div>
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="card" style="margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                    <strong style="margin-right: 10px;">⚡ Quick Presets:</strong>
+                    <button style="background: #c62828; color: white;" onclick="quickAddOfferPreset('youtube_1day')">🎬 1-Day YouTube Task (100 Coins, 30s)</button>
+                    <button style="background: #e65100; color: white;" onclick="quickAddOfferPreset('daily_website')">🌐 Daily Website Task (60 Coins, 20s - 1/day)</button>
+                    <button style="background: #0288d1; color: white;" onclick="quickAddOfferPreset('daily_telegram')">✈️ Daily Telegram Task (80 Coins, 15s - 1/day)</button>
+                    <button style="background: #6a1b9a; color: white;" onclick="quickAddOfferPreset('daily_multi_watch')">🔄 Daily 3-Times Video (50 Coins, 25s - 3/day)</button>
+                </div>
+
+                <div id="offer-form" class="card hidden">
+                    <h3 id="offer-form-title">Add / Edit Custom Offer Task</h3>
+                    <input type="hidden" id="offer-id">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px;">
+                        <div>
+                            <label style="font-size: 13px; font-weight: bold;">Offer / Task Title</label>
+                            <input type="text" id="offer-title" placeholder="e.g. Subscribe to YouTube Channel, Visit Daily Website">
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: bold;">Task URL (YouTube, Website, Telegram, App link)</label>
+                            <input type="text" id="offer-url" placeholder="https://youtube.com/... or https://t.me/...">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size: 13px; font-weight: bold;">Short Description / Instructions</label>
+                            <input type="text" id="offer-desc" placeholder="e.g. Watch video for 30s and subscribe to claim coins">
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: bold;">Reward (Coins)</label>
+                            <input type="number" id="offer-reward" placeholder="e.g. 50, 100, 200" value="100">
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: bold;">Wait Timer (Seconds)</label>
+                            <input type="number" id="offer-timer" placeholder="e.g. 15, 30, 60" value="30">
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: bold;">Task Frequency / Repetition Mode</label>
+                            <select id="offer-frequency" onchange="updateOfferFrequencyHint()" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.15);">
+                                <option value="ONCE">⏱️ 1 Day Only / One-Time (User can only complete once)</option>
+                                <option value="DAILY">🔄 Daily Repeat (User can complete every day - resets daily)</option>
+                                <option value="MULTIPLE">🔢 Custom Limit (Can be completed N times total)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label id="offer-limit-label" style="font-size: 13px; font-weight: bold;">How Many Times User Can Complete Task</label>
+                            <input type="number" id="offer-max-completions" placeholder="1" value="1" min="1">
+                        </div>
+                        <div style="grid-column: span 2; background: rgba(255,255,255,0.04); padding: 10px; border-radius: 8px; border-left: 3px solid #651FFF;">
+                            <small id="offer-limit-hint" style="color: #aaa; font-size: 12px;">
+                                For 1 Day Only: Set to 1. The user can complete this task only 1 time ever. Once completed, it cannot be repeated.
+                            </small>
+                        </div>
+                        <div style="display: flex; align-items: center; margin-top: 10px; grid-column: span 2;">
+                            <input type="checkbox" id="offer-active" checked style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                            <label for="offer-active" style="cursor: pointer; font-weight: bold;">Show & Enable in User App</label>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button class="success" onclick="saveOffer()">💾 Save Offer Task</button>
+                        <button class="danger" onclick="hideOfferForm()">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="card" style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title & Description</th>
+                                <th>URL / Target</th>
+                                <th>Reward</th>
+                                <th>Wait Timer</th>
+                                <th>Repetition Rule</th>
+                                <th>Limit</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="offers-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PLAY & EARN GAMES MANAGEMENT -->
+            <div id="games" class="section">
+                <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <h2>🎮 Play & Earn Games Management</h2>
+                        <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
+                            Configure web/HTML5 games. Users play inside the app, complete the timer countdown, and claim coin rewards by watching Unity ads!
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="success" onclick="seedDefaultGames()">⚡ Seed 5 Popular Games</button>
+                        <button onclick="showGameForm()">+ Add New Game</button>
+                    </div>
+                </div>
+
+                <!-- Game Stats Cards -->
+                <div class="grid-cards" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+                    <div class="stat-card" style="background: linear-gradient(135deg, #FF6F00, #FF8F00);">
+                        <h3>Total Games</h3>
+                        <div class="value" id="stat-total-games">0</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #00897B, #00BFA5);">
+                        <h3>Active Games</h3>
+                        <div class="value" id="stat-active-games">0</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #651FFF, #7C4DFF);">
+                        <h3>Avg. Coin Reward</h3>
+                        <div class="value" id="stat-avg-reward">0 🪙</div>
+                    </div>
+                </div>
+
+                <!-- Add / Edit Game Form -->
+                <div id="game-form" class="card hidden" style="border: 1px solid rgba(255,179,0,0.3); margin-bottom: 20px;">
+                    <h3 id="game-form-title" style="color: var(--accent); margin-top: 0;">+ Add New Game</h3>
+                    <input type="hidden" id="game-id">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div>
+                            <label style="font-size: 13px; font-weight: bold; color: var(--text-muted);">Game Title *</label>
+                            <input type="text" id="game-title" placeholder="e.g. 2048 Classic, Flappy Bird, Tower Stacker">
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: bold; color: var(--text-muted);">Category</label>
+                            <select id="game-category">
+                                <option value="Arcade">🕹️ Arcade</option>
+                                <option value="Puzzle">🧩 Puzzle</option>
+                                <option value="Action">⚡ Action</option>
+                                <option value="Casual">🎯 Casual</option>
+                                <option value="Strategy">♟️ Strategy</option>
+                                <option value="Sports">⚽ Sports</option>
+                            </select>
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size: 13px; font-weight: bold; color: var(--text-muted);">Game Play Link (URL) *</label>
+                            <input type="url" id="game-link" placeholder="https://play2048.co/ or https://flappybird.io/ or HTML5 Web Game URL">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size: 13px; font-weight: bold; color: var(--text-muted);">Description</label>
+                            <textarea id="game-desc" rows="2" placeholder="Brief gameplay summary or instructions..."></textarea>
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: bold; color: var(--text-muted);">Coin Reward (🪙 Coins) *</label>
+                            <input type="number" id="game-coins" value="50" min="1" placeholder="e.g. 50">
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: bold; color: var(--text-muted);">Required Playing Time (⏱️ Seconds) *</label>
+                            <input type="number" id="game-seconds" value="60" min="5" placeholder="e.g. 60 (User must play for 60s before claim button)">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size: 13px; font-weight: bold; color: var(--text-muted);">Game Icon / Thumbnail URL (Optional)</label>
+                            <input type="url" id="game-icon" placeholder="https://... or leave blank for default category icon">
+                        </div>
+                        <div style="display: flex; align-items: center; grid-column: span 2;">
+                            <input type="checkbox" id="game-active" checked style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                            <label for="game-active" style="cursor: pointer; font-weight: bold;">Enable and Show in User App</label>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px; display: flex; gap: 12px;">
+                        <button class="success" onclick="saveGame()" style="padding: 10px 24px;">💾 Save Game</button>
+                        <button class="danger" onclick="hideGameForm()">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Games List Table -->
+                <div class="card" style="overflow-x: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <input type="text" class="search-bar" id="search-games" placeholder="🔍 Search games by title or category..." oninput="filterGamesTable()">
+                        <span style="color: var(--text-muted); font-size: 13px;" id="games-count-label"></span>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Game Title & Description</th>
+                                <th>Category</th>
+                                <th>Reward</th>
+                                <th>Play Timer</th>
+                                <th>Game Link</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="games-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PAYMENT METHODS & WALLET CATEGORIES -->
+            <div id="payment-methods" class="section">
+                <div class="header">
+                    <div>
+                        <h2>Wallet & Withdrawal Categories</h2>
+                        <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
+                            Restricted categories: <strong>eSewa</strong>, <strong>FF Diamond</strong>, <strong>Robux</strong>, and <strong>PUBG</strong>.
+                        </p>
+                    </div>
+                    <div>
+                        <button class="success" onclick="seedAllPaymentMethods()">⚡ Seed 4 Main Categories</button>
+                        <button onclick="showPaymentForm()">+ Add Withdrawal Option</button>
+                    </div>
+                </div>
+
+                <!-- Quick Add Category Buttons -->
+                <div class="card" style="margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                    <strong style="margin-right: 10px;">⚡ Quick Presets:</strong>
+                    <button style="background: #2e7d32; color: white;" onclick="quickAddGiftCard('esewa')">🇳🇵 eSewa (1000 Coins)</button>
+                    <button style="background: #e65100; color: white;" onclick="quickAddGiftCard('free_fire_100')">💎 FF Diamond 100 (1500 Coins)</button>
+                    <button style="background: #bf360c; color: white;" onclick="quickAddGiftCard('free_fire_310')">💎 FF Diamond 310 (4000 Coins)</button>
+                    <button style="background: #00897b; color: white;" onclick="quickAddGiftCard('robux_80')">🪙 Robux 80 (2000 Coins)</button>
+                    <button style="background: #004d40; color: white;" onclick="quickAddGiftCard('robux_400')">🪙 Robux 400 (8000 Coins)</button>
+                    <button style="background: #f57f17; color: white;" onclick="quickAddGiftCard('pubg_60')">🎯 PUBG 60 UC (1500 Coins)</button>
+                    <button style="background: #e65100; color: white;" onclick="quickAddGiftCard('pubg_325')">🎯 PUBG 325 UC (5000 Coins)</button>
+                    <button style="background: #d84315; color: white;" onclick="quickAddGiftCard('pubg_660')">🎯 PUBG 660 UC (9500 Coins)</button>
+                </div>
+
+                <!-- Category Filter Bar -->
+                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="btn-cat-all" onclick="setCategoryFilter('all')" style="background: var(--primary);">All Methods</button>
+                    <button id="btn-cat-esewa" onclick="setCategoryFilter('eSewa')" style="background: #2E2B3E;">🇳🇵 eSewa</button>
+                    <button id="btn-cat-ff" onclick="setCategoryFilter('FF Diamond')" style="background: #2E2B3E;">💎 FF Diamond</button>
+                    <button id="btn-cat-robux" onclick="setCategoryFilter('Robux')" style="background: #2E2B3E;">🪙 Robux</button>
+                    <button id="btn-cat-pubg" onclick="setCategoryFilter('PUBG')" style="background: #2E2B3E;">🎯 PUBG</button>
+                </div>
+
+                <div id="payment-form" class="card hidden">
+                    <h3 id="payment-form-title">Add / Edit Withdrawal Option</h3>
+                    <input type="hidden" id="payment-doc-id">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label>Withdrawal Name</label>
+                            <input type="text" id="payment-name" placeholder="e.g. 100 Free Fire Diamonds, eSewa 100 NPR, PUBG 60 UC">
+                        </div>
+                        <div>
+                            <label>Category (Strictly: eSewa, FF Diamond, Robux, PUBG)</label>
+                            <select id="payment-category" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.15);">
+                                <option value="eSewa">🇳🇵 eSewa</option>
+                                <option value="FF Diamond">💎 FF Diamond</option>
+                                <option value="Robux">🪙 Robux</option>
+                                <option value="PUBG">🎯 PUBG</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Amount Configuration Mode</label>
+                            <select id="payment-amount-mode" onchange="toggleAmountFields()" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.15);">
+                                <option value="FIXED">🔒 Fixed Amount Coins</option>
+                                <option value="RANGE">↔️ Min-Max Coins Range</option>
+                            </select>
+                        </div>
+                        <div id="wrapper-fixed-coins">
+                            <label>Fixed Coins Amount (Cost to Withdraw)</label>
+                            <input type="number" id="payment-fixed-coins" placeholder="e.g. 1000, 1500, 2000, 4000" value="1000">
+                        </div>
+                        <div id="wrapper-min-coins" class="hidden">
+                            <label>Minimum Coins</label>
+                            <input type="number" id="payment-min-coins" placeholder="e.g. 500" value="500">
+                        </div>
+                        <div id="wrapper-max-coins" class="hidden">
+                            <label>Maximum Coins</label>
+                            <input type="number" id="payment-max-coins" placeholder="e.g. 10000" value="10000">
+                        </div>
+                        <div>
+                            <label>Equivalent Fiat / Game Currency Amount (e.g. 10, 60, 100)</label>
+                            <input type="number" id="payment-min" placeholder="10" value="10">
+                        </div>
+                        <div>
+                            <label>Input Hint (Placeholder for User to Enter ID/Number)</label>
+                            <input type="text" id="payment-placeholder" placeholder="e.g. Enter Free Fire Player UID & Username">
+                        </div>
+                        <div>
+                            <label>Short Description</label>
+                            <input type="text" id="payment-desc" placeholder="e.g. Instant Diamonds top-up to UID within 24h">
+                        </div>
+                        <div>
+                            <label>Icon Style</label>
+                            <select id="payment-icon" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.15);">
+                                <option value="esewa">🇳🇵 eSewa Wallet</option>
+                                <option value="fire">💎 Fire / Diamond (FF Diamond)</option>
+                                <option value="robux">🪙 Robux Coin (Roblox)</option>
+                                <option value="pubg">🎯 PUBG Helmet / Target</option>
+                                <option value="card">💳 General Digital Card</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Badge Text</label>
+                            <input type="text" id="payment-badge" placeholder="e.g. POPULAR, HOT, INSTANT, 100 NPR">
+                        </div>
+                        <div style="display: flex; align-items: center; margin-top: 15px; grid-column: span 2;">
+                            <input type="checkbox" id="payment-active" checked style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                            <label for="payment-active" style="cursor: pointer; font-weight: bold;">Show and Enable in User App Wallet</label>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button class="success" onclick="savePaymentMethod()">💾 Save Withdrawal Option</button>
+                        <button class="danger" onclick="hidePaymentForm()">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="card" style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Method & Badge</th>
+                                <th>Category</th>
+                                <th>Coins (Fixed or Range)</th>
+                                <th>Input Hint</th>
+                                <th>Short Description</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payments-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- COUPONS -->
+            <div id="coupons" class="section">
+                <div class="header">
+                    <h2>Promo & Coupon Codes</h2>
+                    <div>
+                        <button class="success" onclick="showCouponForm()">+ Create New Coupon</button>
+                    </div>
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="card" style="margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                    <strong style="margin-right: 10px;">Quick Create:</strong>
+                    <button style="background: #e65100; color: white;" onclick="quickCreateCoupon('WELCOME100', 100, 0, 'Welcome gift bonus for all users')">🎁 WELCOME100 (+100)</button>
+                    <button style="background: #2e7d32; color: white;" onclick="quickCreateCoupon('BONUS500', 500, 100, 'Limited 500 coins special drop')">🔥 BONUS500 (+500)</button>
+                    <button style="background: #651FFF; color: white;" onclick="quickCreateCoupon('MEGA1000', 1000, 50, 'Exclusive 1000 coins drop')">⚡ MEGA1000 (+1000)</button>
+                    <button style="background: #0288d1; color: white;" onclick="quickCreateCoupon('TELEGRAM200', 200, 200, 'Community channel promo')">✈️ TELEGRAM200 (+200)</button>
+                </div>
+
+                <!-- Create Coupon Form -->
+                <div id="coupon-form" class="card hidden">
+                    <h3>Create New Coupon Code</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label>Coupon Code (Letters & Numbers)</label>
+                            <input type="text" id="coupon-code" placeholder="e.g. WELCOME100, BONUS500" style="text-transform: uppercase;">
+                        </div>
+                        <div>
+                            <label>Reward (Coins Amount)</label>
+                            <input type="number" id="coupon-reward" placeholder="e.g. 500" value="100">
+                        </div>
+                        <div>
+                            <label>Max Usage Limit (0 for Unlimited)</label>
+                            <input type="number" id="coupon-max-uses" placeholder="0 = No limit" value="0">
+                        </div>
+                        <div>
+                            <label>Description / Note for Users</label>
+                            <input type="text" id="coupon-desc" placeholder="e.g. Special Telegram Drop / Weekend Bonus">
+                        </div>
+                        <div style="display: flex; align-items: center; margin-top: 15px;">
+                            <label><input type="checkbox" id="coupon-active" checked> Is Active & Redeemable?</label>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button class="success" onclick="saveCoupon()">Save & Activate Coupon</button>
+                        <button class="danger" onclick="hideCouponForm()">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="card" style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Coupon Code</th>
+                                <th>Reward</th>
+                                <th>Claims / Limit</th>
+                                <th>Description</th>
+                                <th>Created</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="coupons-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PAGE NOTICES (ALERTS FOR EVERY SCREEN) -->
+            <div id="page-notices" class="section">
+                <div class="header">
+                    <div>
+                        <h2>📢 In-App Page Notices & Issue Alerts</h2>
+                        <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
+                            Write notices for any specific page in the app (e.g. Wallet, Spin Wheel, Games, Home) to inform users about problems, maintenance, delays, or updates in real time.
+                        </p>
+                    </div>
+                    <button onclick="showPageNoticeForm()">+ Create New Page Notice</button>
+                </div>
+
+                <!-- Quick Issue Notice Presets -->
+                <div class="card" style="margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                    <strong style="margin-right: 10px;">⚡ Quick Issue Presets:</strong>
+                    <button style="background: #e65100; color: white;" onclick="quickAddPageNotice('wallet_esewa')">💳 Wallet: eSewa Withdrawal Delay Notice</button>
+                    <button style="background: #c62828; color: white;" onclick="quickAddPageNotice('spin_maint')">🎡 Spin Wheel: Maintenance Notice</button>
+                    <button style="background: #0288d1; color: white;" onclick="quickAddPageNotice('tasks_verify')">📋 Tasks: Coin Verification Delay</button>
+                    <button style="background: #6a1b9a; color: white;" onclick="quickAddPageNotice('games_reward')">🎮 Games: Server Update in Progress</button>
+                    <button style="background: #2e7d32; color: white;" onclick="quickAddPageNotice('global_welcome')">🌐 All Pages: Double Coin Event Active</button>
+                </div>
+
+                <!-- Page Filter Bar -->
+                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="btn-notice-all" onclick="filterPageNotices('all_filter')" style="background: var(--primary);">All Notices</button>
+                    <button id="btn-notice-wallet" onclick="filterPageNotices('wallet')" style="background: #2E2B3E;">💳 Wallet</button>
+                    <button id="btn-notice-home" onclick="filterPageNotices('home')" style="background: #2E2B3E;">🏠 Home</button>
+                    <button id="btn-notice-earn" onclick="filterPageNotices('earn')" style="background: #2E2B3E;">💰 Earn</button>
+                    <button id="btn-notice-spin" onclick="filterPageNotices('spin')" style="background: #2E2B3E;">🎡 Spin Wheel</button>
+                    <button id="btn-notice-scratch" onclick="filterPageNotices('scratch')" style="background: #2E2B3E;">🎟️ Scratch Card</button>
+                    <button id="btn-notice-games" onclick="filterPageNotices('games')" style="background: #2E2B3E;">🎮 Games</button>
+                    <button id="btn-notice-tasks" onclick="filterPageNotices('tasks')" style="background: #2E2B3E;">📋 Tasks</button>
+                </div>
+
+                <!-- Create / Edit Form -->
+                <div id="page-notice-form" class="card hidden">
+                    <h3 id="page-notice-form-title">Create Page Notice</h3>
+                    <input type="hidden" id="page-notice-id">
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px;">
+                        <div>
+                            <label style="font-size: 13px; font-weight: bold;">Select App Page to Display Notice</label>
+                            <select id="notice-page-id" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.15);">
+                                <option value="all">🌐 All Pages (Global Notice across entire app)</option>
+                                <option value="wallet">💳 Wallet & Withdrawal Page (eSewa / FF Diamonds)</option>
+                                <option value="home">🏠 Home Screen</option>
+                                <option value="earn">💰 Earn Dashboard</option>
+                                <option value="spin">🎡 Spin Wheel Game</option>
+                                <option value="scratch">🎟️ Scratch Card Game</option>
+                                <option value="watch">📺 Watch & Earn Video Screen</option>
+                                <option value="bonus">🎁 Daily Bonus Screen</option>
+                                <option value="games">🎮 Play & Earn Games Screen</option>
+                                <option value="tasks">📋 Custom Offers & Tasks Screen</option>
+                                <option value="coupon">🎫 Redeem Coupon Screen</option>
+                                <option value="refer">👥 Refer & Earn Screen</option>
+                                <option value="leaderboard">🏆 Leaderboard Screen</option>
+                                <option value="history">📜 Coin & Withdrawal History</option>
+                                <option value="contact">💬 Support & Contact Screen</option>
+                                <option value="settings">⚙️ Settings Screen</option>
+                                <option value="social">🌐 Social Media Screen</option>
+                                <option value="profile">👤 User Profile Screen</option>
+                                <option value="notifications">🔔 In-App Notifications Screen</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: bold;">Notice Alert Style / Severity</label>
+                            <select id="notice-type" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.15);">
+                                <option value="warning">⚠️ Warning / Issue / Under Maintenance (Orange)</option>
+                                <option value="info">ℹ️ Information / Update Notice (Teal / Blue)</option>
+                                <option value="error">🚨 Critical Problem / Temporary Shutdown (Red)</option>
+                                <option value="success">✅ Service Resolved / Promo Announcement (Green)</option>
+                            </select>
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size: 13px; font-weight: bold;">Notice Title / Header</label>
+                            <input type="text" id="notice-title" placeholder="e.g. eSewa Withdrawal Issue Notice / Server Maintenance">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size: 13px; font-weight: bold;">Notice Message (Detailed Explanation for Users)</label>
+                            <textarea id="notice-message" rows="3" placeholder="e.g. Dear users, eSewa bank server is currently slow. All withdrawals between 100-500 NPR are being processed within 2-4 hours. Your coins are completely safe."></textarea>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="notice-active" checked style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
+                            <label for="notice-active" style="font-size: 13px; font-weight: bold; color: #00e676; cursor: pointer; margin: 0;">Active (Instantly Visible to Users in App)</label>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button onclick="savePageNotice()">💾 Publish Page Notice</button>
+                        <button class="danger" onclick="hidePageNoticeForm()">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Page Notices Table -->
+                <div class="card" style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Target Page</th>
+                                <th>Type</th>
+                                <th>Title & Message</th>
+                                <th>Date Created</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="page-notices-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- NOTIFICATIONS -->
+            <div id="notifications" class="section">
+                <h2>Push Notifications & Notice System</h2>
+                <div class="card">
+                    <div style="background: rgba(101,31,255,0.12); border: 1px solid rgba(101,31,255,0.3); padding: 14px; border-radius: 8px; margin-bottom: 15px;">
+                        <label style="font-weight: bold; color: #b388ff; display: block; margin-bottom: 8px;">🎯 Target Audience / Recipient:</label>
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="notif-target-type" id="notif-target-all" value="all" checked onchange="toggleNotifTarget()">
+                                <strong style="color: #00e676;">🌐 Everyone (Broadcast Notice to All Users)</strong>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="notif-target-type" id="notif-target-single" value="specific" onchange="toggleNotifTarget()">
+                                <strong style="color: #00e5ff;">👤 Specific User Only (Targeted Notice)</strong>
+                            </label>
+                        </div>
+                        <div id="notif-user-select-container" class="hidden" style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="font-size: 12px; color: var(--text-muted);">Select from registered users:</label>
+                                <select id="notif-user-dropdown" onchange="onNotifUserSelected()">
+                                    <option value="">-- Choose User --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: var(--text-muted);">Or paste specific Firebase UID:</label>
+                                <input type="text" id="notif-user-uid" placeholder="User UID (e.g. 7mK9...)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label>Notification Title</label>
+                            <input type="text" id="notif-title" placeholder="e.g. 🎉 Special Bonus Added / Weekend Double Coins!">
+                        </div>
+                        <div class="form-group">
+                            <label>Notice Icon</label>
+                            <select id="notif-icon">
+                                <option value="notifications">🔔 Bell / Notice</option>
+                                <option value="gift">🎁 Gift / Bonus</option>
+                                <option value="star">⭐ Star / Coins</option>
+                                <option value="games">🎮 Game / Play</option>
+                                <option value="people">👥 Referral / Friends</option>
+                                <option value="bank">🏦 Wallet / Payment</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Message Body</label>
+                        <textarea id="notif-body" rows="3" placeholder="Write the notice message for users to see inside the app..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Image URL (Optional)</label>
+                        <input type="text" id="notif-image" placeholder="https://example.com/promo-banner.png">
+                    </div>
+                    <button onclick="sendNotification()" style="padding: 12px 20px; font-size: 15px;">🚀 Send Notice / Notification</button>
+                </div>
+                <h3>Recent Notifications</h3>
+                <div class="card" style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Message</th>
+                                <th>Audience</th>
+                                <th>Icon</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notifs-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Use the firebase config output from your app's setup or remote_config
+        
+        const config = {
+            apiKey: "AIzaSyAJHPuwqQx_rIzU6Q39UjSeeru5w8vSHys",
+            authDomain: "task-earn-61241.firebaseapp.com",
+            projectId: "task-earn-61241",
+            storageBucket: "task-earn-61241.firebasestorage.app",
+            messagingSenderId: "462975445825",
+            appId: "1:462975445825:android:2d2330781b6b30f2dccfc0"
+        };
+        firebase.initializeApp(config);
+        window.db = firebase.firestore();
+        window.auth = firebase.auth();
+        checkAuth();
+
+
+        function enterAdminDirectly() {
+            localStorage.setItem('admin_session_active', 'true');
+            const authScr = document.getElementById('auth-screen');
+            const appScr = document.getElementById('app-screen');
+            if (authScr) authScr.style.display = 'none';
+            if (appScr) {
+                appScr.style.display = 'flex';
+                appScr.classList.remove('hidden');
+            }
+            initDashboard();
+        }
+
+        function checkAuth() {
+            if (localStorage.getItem('admin_session_active') === 'true' || window.location.search.includes('direct')) {
+                enterAdminDirectly();
+                return;
+            }
+
+            auth.onAuthStateChanged(user => {
+                if(user || localStorage.getItem('admin_session_active') === 'true') {
+                    enterAdminDirectly();
+                } else {
+                    document.getElementById('auth-screen').style.display = 'flex';
+                    document.getElementById('app-screen').style.display = 'none';
+                }
+            }, err => {
+                console.warn("Auth state error:", err);
+                enterAdminDirectly();
+            });
+        }
+
+        
+        function register() {
+            const e = document.getElementById('email').value;
+            const p = document.getElementById('password').value;
+            if(!e || !p) {
+                document.getElementById('auth-error').innerText = "Please enter email and password";
+                return;
+            }
+            auth.createUserWithEmailAndPassword(e, p).then(() => {
+                enterAdminDirectly();
+            }).catch(err => {
+                document.getElementById('auth-error').innerText = err.message;
+            });
+        }
+
+        function login() {
+            const e = document.getElementById('email').value;
+            const p = document.getElementById('password').value;
+            if(!e || !p) {
+                document.getElementById('auth-error').innerText = "Please enter email and password";
+                return;
+            }
+            auth.signInWithEmailAndPassword(e, p).then(() => {
+                enterAdminDirectly();
+            }).catch(err => {
+                document.getElementById('auth-error').innerText = err.message;
+            });
+        }
+
+        function logout() { 
+            localStorage.removeItem('admin_session_active');
+            try { auth.signOut(); } catch(e) {}
+            const authScr = document.getElementById('auth-screen');
+            const appScr = document.getElementById('app-screen');
+            if (authScr) authScr.style.display = 'flex';
+            if (appScr) {
+                appScr.style.display = 'none';
+                appScr.classList.add('hidden');
+            }
+        }
+
+        function switchTab(tab, el) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            const sec = document.getElementById(tab);
+            if (sec) sec.classList.add('active');
+            
+            const targetNav = el || (window.event && window.event.currentTarget) || (window.event && window.event.target) || document.querySelector(`.nav-item[onclick*="${tab}"]`);
+            if (targetNav && targetNav.classList) {
+                targetNav.classList.add('active');
+            }
+        }
+
+        function initDashboard() {
+            // Dashboard Stats
+            db.collection('users').onSnapshot(snap => {
+                document.getElementById('stat-users').innerText = snap.size;
+                loadUsers(snap);
+            });
+            db.collection('withdraw_requests').onSnapshot(snap => {
+                let pending = 0;
+                let success = 0;
+                let money = 0;
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    if(data.status === 'pending') pending++;
+                    if(data.status === 'approved') {
+                        success++;
+                        money += data.rupees || 0;
+                    }
+                });
+                document.getElementById('stat-pending').innerText = pending;
+                document.getElementById('stat-success').innerText = success;
+                document.getElementById('stat-money').innerText = money;
+                loadWithdrawals(snap);
+            });
+
+            // Settings
+            db.collection('settings').doc('config').onSnapshot(doc => {
+                if(doc.exists) {
+                    const d = doc.data();
+                    document.getElementById('cfg-daily').value = d.daily_bonus || 100;
+                    document.getElementById('cfg-ref-referrer').value = d.referral_referrer || 5000;
+                    document.getElementById('cfg-ref-referee').value = d.referral_referee || 100;
+                    document.getElementById('cfg-streak').value = (d.daily_streak_coins || [10,20,30,40,50,60,100]).join(',');
+                    
+                    if(document.getElementById('cfg-spin-min')) document.getElementById('cfg-spin-min').value = d.spin_min_reward || 1;
+                    if(document.getElementById('cfg-spin-max')) document.getElementById('cfg-spin-max').value = d.spin_max_reward || 200;
+                    document.getElementById('cfg-spin-limit').value = d.spin_limit || 10;
+                    if(document.getElementById('cfg-scratch-min')) document.getElementById('cfg-scratch-min').value = d.scratch_min_reward || 1;
+                    if(document.getElementById('cfg-scratch-max')) document.getElementById('cfg-scratch-max').value = d.scratch_max_reward || 200;
+                    document.getElementById('cfg-scratch-limit').value = d.scratch_limit || 10;
+                    document.getElementById('cfg-video-reward').value = d.video_reward || 20;
+                    document.getElementById('cfg-video-limit').value = d.video_limit || 10;
+                    document.getElementById('cfg-rate').value = d.rate || 100;
+
+                    // eSewa & FF Diamond Limits
+                    if(document.getElementById('cfg-esewa-min')) document.getElementById('cfg-esewa-min').value = d.esewa_min_rupees || 100;
+                    if(document.getElementById('cfg-esewa-max')) document.getElementById('cfg-esewa-max').value = d.esewa_max_rupees || 500;
+                    if(document.getElementById('cfg-ff-diamond-rate')) document.getElementById('cfg-ff-diamond-rate').value = d.ff_diamond_rate || 115;
+
+                    // Games Daily Limit & Cooldown
+                    if(document.getElementById('cfg-game-daily-limit')) document.getElementById('cfg-game-daily-limit').value = d.game_daily_limit || 10;
+                    if(document.getElementById('cfg-game-cooldown')) document.getElementById('cfg-game-cooldown').value = (d.game_cooldown_minutes !== undefined) ? d.game_cooldown_minutes : 5;
+
+                    // In-App Update Notice
+                    if(document.getElementById('cfg-update-enabled')) document.getElementById('cfg-update-enabled').checked = d.app_update_enabled === true;
+                    if(document.getElementById('cfg-update-version-name')) document.getElementById('cfg-update-version-name').value = d.latest_version_name || "";
+                    if(document.getElementById('cfg-update-version-code')) document.getElementById('cfg-update-version-code').value = d.latest_version_code || "";
+                    if(document.getElementById('cfg-update-title')) document.getElementById('cfg-update-title').value = d.app_update_title || "New Version Available!";
+                    if(document.getElementById('cfg-update-desc')) document.getElementById('cfg-update-desc').value = d.app_update_desc || "";
+                    if(document.getElementById('cfg-update-link')) document.getElementById('cfg-update-link').value = d.app_update_link || "";
+                    if(document.getElementById('cfg-update-cancelable')) document.getElementById('cfg-update-cancelable').checked = d.app_update_cancelable !== false;
+
+                    // App Links & Contacts
+                    if(document.getElementById('cfg-app-link')) document.getElementById('cfg-app-link').value = d.app_download_link || "";
+                    if(document.getElementById('cfg-whatsapp')) document.getElementById('cfg-whatsapp').value = d.whatsapp_link || "";
+                    if(document.getElementById('cfg-youtube')) document.getElementById('cfg-youtube').value = d.youtube_link || "";
+                    if(document.getElementById('cfg-tiktok')) document.getElementById('cfg-tiktok').value = d.tiktok_link || "";
+                    if(document.getElementById('cfg-telegram')) document.getElementById('cfg-telegram').value = d.telegram_link || "";
+                    if(document.getElementById('cfg-instagram')) document.getElementById('cfg-instagram').value = d.instagram_link || "";
+                    if(document.getElementById('cfg-email')) document.getElementById('cfg-email').value = d.support_email || "";
+
+                    // Unity Ads Config
+                    if(document.getElementById('cfg-ads-enabled')) document.getElementById('cfg-ads-enabled').checked = d.ads_enabled !== false;
+                    if(document.getElementById('cfg-unity-enabled')) document.getElementById('cfg-unity-enabled').checked = d.unity_ads_enabled !== false;
+                    if(document.getElementById('cfg-unity-game-id')) document.getElementById('cfg-unity-game-id').value = d.unity_id || d.unity_game_id || "5846818";
+                    if(document.getElementById('cfg-unity-placement')) document.getElementById('cfg-unity-placement').value = d.unity_placement_id || d.unity_rewarded_placement_id || "Rewarded_Android";
+                    if(document.getElementById('cfg-unity-interstitial')) document.getElementById('cfg-unity-interstitial').value = d.unity_interstitial_placement || d.unity_interstitial_placement_id || "Interstitial_Android";
+                    if(document.getElementById('cfg-unity-banner')) document.getElementById('cfg-unity-banner').value = d.unity_banner_placement || d.unity_banner_placement_id || "Banner_Android";
+                    if(document.getElementById('cfg-interstitial-interval')) document.getElementById('cfg-interstitial-interval').value = d.interstitial_interval_minutes || 5;
+                    if(document.getElementById('cfg-unity-test-mode')) document.getElementById('cfg-unity-test-mode').checked = d.unity_test_mode !== false;
+                }
+            });
+
+            // Banners
+            db.collection('banners').onSnapshot(snap => {
+                const tbody = document.getElementById('banners-body');
+                tbody.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    tbody.innerHTML += `<tr>
+                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.imageUrl}</td>
+                        <td>${d.link || '-'}</td>
+                        <td><button class="danger" onclick="deleteDoc('banners','${doc.id}')">Delete</button></td>
+                    </tr>`;
+                });
+            });
+
+            // Offers & Tasks
+            window.allOffersList = [];
+            db.collection('offers').onSnapshot(snap => {
+                const statOffersEl = document.getElementById('stat-offers');
+                if (statOffersEl) statOffersEl.innerText = snap.size;
+                const tbody = document.getElementById('offers-body');
+                if(!tbody) return;
+                tbody.innerHTML = '';
+                window.allOffersList = [];
+
+                if(snap.empty) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;padding:20px;">No custom offers found. Click "+ Add Custom Offer / Task" or use Quick Presets above!</td></tr>';
+                    return;
+                }
+
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const item = { id: doc.id, ...d };
+                    window.allOffersList.push(item);
+
+                    const freq = (d.frequency || 'ONCE').toUpperCase();
+                    const maxComp = d.maxCompletions || 1;
+                    let freqBadge = '';
+                    if (freq === 'DAILY') {
+                        freqBadge = `<span class="badge" style="background:#e65100;color:#fff;font-weight:bold;">🔄 DAILY (${maxComp}/day)</span>`;
+                    } else if (freq === 'ONCE') {
+                        freqBadge = `<span class="badge" style="background:#1565c0;color:#fff;font-weight:bold;">⏱️ 1-DAY ONLY (${maxComp} time)</span>`;
+                    } else {
+                        freqBadge = `<span class="badge" style="background:#6a1b9a;color:#fff;font-weight:bold;">🔢 LIMIT (${maxComp})</span>`;
+                    }
+
+                    const isActive = d.isActive !== false;
+                    const statusBadge = isActive ? '<span class="badge approved">ACTIVE</span>' : '<span class="badge rejected">INACTIVE</span>';
+
+                    tbody.innerHTML += `<tr>
+                        <td>
+                            <strong>${d.title || 'Untitled'}</strong>
+                            ${d.description ? `<br><small style="color:#aaa;">${d.description}</small>` : ''}
+                        </td>
+                        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            <a href="${d.url || '#'}" target="_blank" style="color:#64b5f6;text-decoration:none;">${d.url || '-'}</a>
+                        </td>
+                        <td><strong style="color:#ffc107;">+${d.reward || 0}</strong> Coins</td>
+                        <td>⏱️ ${d.timer || 0}s</td>
+                        <td>${freqBadge}</td>
+                        <td><strong>${maxComp}</strong></td>
+                        <td>${statusBadge}</td>
+                        <td style="white-space:nowrap;">
+                            <button class="btn-edit" onclick="editOffer('${doc.id}')">✏️ Edit</button>
+                            <button class="${isActive ? 'danger' : 'success'}" onclick="toggleOfferActive('${doc.id}', ${isActive})">${isActive ? 'Deactivate' : 'Activate'}</button>
+                            <button style="background:#ff9800;color:black;font-weight:bold;" onclick="resetOfferForUsers('${doc.id}')" title="Reset completions so all users see this task again to complete and view ads!">🔄 Reset for All</button>
+                            <button class="danger" onclick="deleteDoc('offers','${doc.id}')">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+            });
+
+            // Payment Methods
+            db.collection('payment_methods').onSnapshot(snap => {
+                window.allPaymentMethods = [];
+                snap.forEach(doc => {
+                    window.allPaymentMethods.push({ id: doc.id, ...doc.data() });
+                });
+                renderPaymentMethodsTable();
+            });
+
+            // Coupons
+            db.collection('coupons').onSnapshot(snap => {
+                const statEl = document.getElementById('stat-coupons');
+                if(statEl) statEl.innerText = snap.size;
+
+                const tbody = document.getElementById('coupons-body');
+                tbody.innerHTML = '';
+                if(snap.empty) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:20px;">No coupon codes created yet. Click "+ Create New Coupon" or use Quick Create above!</td></tr>';
+                    return;
+                }
+                const sorted = [];
+                snap.forEach(d => sorted.push({ id: d.id, ...d.data() }));
+                sorted.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0)).forEach(d => {
+                    const maxText = (d.maxUses && d.maxUses > 0) ? `${d.usedCount || 0} / ${d.maxUses}` : `${d.usedCount || 0} / ∞ (Unlimited)`;
+                    const isLimitReached = (d.maxUses && d.maxUses > 0 && (d.usedCount || 0) >= d.maxUses);
+                    const statusBadge = !d.isActive ? '<span class="badge rejected">INACTIVE</span>' : (isLimitReached ? '<span class="badge pending">EXHAUSTED</span>' : '<span class="badge approved">ACTIVE</span>');
+                    const createdDate = d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '-';
+
+                    tbody.innerHTML += `<tr>
+                        <td>
+                            <span style="background:#262000;color:#ffeb3b;padding:4px 8px;border-radius:6px;font-family:monospace;font-weight:bold;letter-spacing:1px;border:1px solid #ffd600;">
+                                ${d.code || d.id}
+                            </span>
+                        </td>
+                        <td><strong style="color:#00e676;">+${d.reward || 0}</strong> Coins</td>
+                        <td>${maxText}</td>
+                        <td style="color:#aaa;max-width:200px;font-size:12px;">${d.description || '-'}</td>
+                        <td style="font-size:12px;color:#888;">${createdDate}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <button class="${d.isActive ? 'danger' : 'success'}" onclick="toggleCouponActive('${d.id}', ${d.isActive})">${d.isActive ? 'Deactivate' : 'Activate'}</button>
+                            <button class="danger" onclick="deleteCoupon('${d.id}')">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+            });
+
+            // Notifications
+            db.collection('notifications').orderBy('timestamp', 'desc').limit(25).onSnapshot(snap => {
+                const tbody = document.getElementById('notifs-body');
+                if(!tbody) return;
+                tbody.innerHTML = '';
+                if(snap.empty) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;">No notifications sent yet.</td></tr>';
+                    return;
+                }
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const isAll = !d.userId || d.userId === 'all' || d.target === 'all';
+                    const audienceBadge = isAll ?
+                        '<span class="badge approved" style="background:#00e676;color:#000;font-weight:bold;">🌐 ALL USERS</span>' :
+                        `<span class="badge" style="background:#651FFF;color:#fff;font-weight:bold;font-size:11px;">👤 USER: ${d.userId.substring(0, 10)}...</span>`;
+                    
+                    const iconEmoji = d.icon === 'gift' ? '🎁 Gift' : (d.icon === 'star' ? '⭐ Star' : (d.icon === 'games' ? '🎮 Game' : (d.icon === 'people' ? '👥 Friends' : (d.icon === 'bank' ? '🏦 Wallet' : '🔔 Bell'))));
+
+                    tbody.innerHTML += `<tr>
+                        <td><strong>${d.title || 'No title'}</strong></td>
+                        <td style="max-width:240px;word-break:break-word;">${d.message || d.body || '-'}</td>
+                        <td>${audienceBadge}</td>
+                        <td><span style="font-size:12px;">${iconEmoji}</span></td>
+                        <td style="font-size:12px;color:#aaa;">${d.timestamp ? new Date(d.timestamp).toLocaleString() : '-'}</td>
+                        <td><button class="danger" onclick="deleteDoc('notifications', '${doc.id}')">Delete</button></td>
+                    </tr>`;
+                });
+            });
+
+            // Games Listener
+            db.collection('games').onSnapshot(snap => {
+                const statGamesEl = document.getElementById('stat-games');
+                if (statGamesEl) statGamesEl.innerText = snap.size;
+                const statTotalEl = document.getElementById('stat-total-games');
+                if (statTotalEl) statTotalEl.innerText = snap.size;
+
+                let activeCount = 0;
+                let totalCoins = 0;
+                window.allGamesList = [];
+
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const item = { id: doc.id, ...d };
+                    window.allGamesList.push(item);
+                    if (d.isActive !== false) activeCount++;
+                    totalCoins += (d.coin || d.coins || 0);
+                });
+
+                const statActiveEl = document.getElementById('stat-active-games');
+                if (statActiveEl) statActiveEl.innerText = activeCount;
+                const statAvgEl = document.getElementById('stat-avg-reward');
+                if (statAvgEl) statAvgEl.innerText = (snap.size > 0 ? Math.round(totalCoins / snap.size) : 0) + ' 🪙';
+
+                renderGamesTable();
+            });
+
+            // Page Notices (Real-time in-app alerts for every page)
+            db.collection('page_notices').onSnapshot(snap => {
+                window.allPageNoticesList = [];
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    data.id = doc.id;
+                    window.allPageNoticesList.push(data);
+                });
+                window.allPageNoticesList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                renderPageNotices();
+            }, err => console.warn("page_notices listen error:", err));
+        }
+
+        // ======================= USER MANAGEMENT =======================
+        window.rawUsersList = [];
+        window.currentUserFilter = 'all';
+
+        function loadUsers(snap) {
+            window.rawUsersList = [];
+            snap.forEach(doc => {
+                window.rawUsersList.push({ id: doc.id, ...doc.data() });
+            });
+            renderUsersTable();
+            populateNotifUsersDropdown();
+        }
+
+        function populateNotifUsersDropdown() {
+            const dropdown = document.getElementById('notif-user-dropdown');
+            if(!dropdown) return;
+            const currentSelected = dropdown.value;
+            dropdown.innerHTML = '<option value="">-- Choose User --</option>';
+            (window.rawUsersList || []).forEach(u => {
+                const label = `${u.name || 'Unnamed'} (${u.email || u.id.substring(0,8)}...) - ${u.balance || 0}🪙`;
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                opt.textContent = label;
+                if(u.id === currentSelected) opt.selected = true;
+                dropdown.appendChild(opt);
+            });
+        }
+
+        function setUserFilter(filter) {
+            window.currentUserFilter = filter;
+            ['all', 'active', 'blocked'].forEach(f => {
+                const btn = document.getElementById(`btn-user-${f}`);
+                if(btn) {
+                    btn.style.background = (f === filter) ? 'var(--primary)' : '#2E2B3E';
+                }
+            });
+            renderUsersTable();
+        }
+
+        function filterUsersList() {
+            renderUsersTable();
+        }
+
+        function renderUsersTable() {
+            const tbody = document.getElementById('users-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+
+            const q = (document.getElementById('user-search-input')?.value || '').toLowerCase().trim();
+            const filtered = (window.rawUsersList || []).filter(u => {
+                const matchesSearch = !q ||
+                    (u.email && u.email.toLowerCase().includes(q)) ||
+                    (u.name && u.name.toLowerCase().includes(q)) ||
+                    (u.id && u.id.toLowerCase().includes(q)) ||
+                    (u.referCode && u.referCode.toLowerCase().includes(q)) ||
+                    (u.deviceId && u.deviceId.toLowerCase().includes(q));
+                
+                if(!matchesSearch) return false;
+                if(window.currentUserFilter === 'active') return u.isBlocked !== true;
+                if(window.currentUserFilter === 'blocked') return u.isBlocked === true;
+                return true;
+            });
+
+            if(filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#888;padding:20px;">No users found matching your search.</td></tr>';
+                return;
+            }
+
+            filtered.slice(0, 100).forEach(d => {
+                const blocked = d.isBlocked === true;
+                
+                // Format last login
+                let lastLoginText = '-';
+                if (d.lastLogin) {
+                    try {
+                        const dt = new Date(d.lastLogin);
+                        lastLoginText = isNaN(dt.getTime()) ? '-' : dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    } catch(e) { lastLoginText = '-'; }
+                }
+
+                // Format Device ID
+                const devIdDisplay = d.deviceId ?
+                    `<code style="font-size:10px;background:#111;padding:2px 5px;border-radius:4px;color:#00e5ff;" title="${d.deviceId}">${d.deviceId.substring(0, 8)}...</code>` :
+                    '<span style="color:#666;">-</span>';
+
+                const friendsCount = d.friendsInvited || d.referralsCount || d.referralCount || 0;
+
+                tbody.innerHTML += `<tr>
+                    <td style="font-size:12px;">
+                        <strong>${d.email || 'No email'}</strong><br>
+                        <span style="color:#666;font-size:11px;">${d.id}</span>
+                    </td>
+                    <td><strong>${d.name || '-'}</strong></td>
+                    <td><strong style="color:#ffeb3b;">${d.balance || 0}</strong> Coins</td>
+                    <td><strong style="color:#00e676;">👥 ${friendsCount}</strong></td>
+                    <td style="font-size:12px;color:#aaa;white-space:nowrap;">🕒 ${lastLoginText}</td>
+                    <td>${devIdDisplay}</td>
+                    <td><code>${d.referCode || '-'}</code></td>
+                    <td>${blocked ? '<span class="badge rejected">BLOCKED</span>' : '<span class="badge approved">ACTIVE</span>'}</td>
+                    <td style="white-space:nowrap;">
+                        <button class="btn-edit" onclick="openUserModal('${d.id}')">✏️ Edit</button>
+                        <button style="background:#673AB7;color:#fff;padding:6px 10px;font-size:12px;" onclick="openUserHistoryModal('${d.id}')">📜 History</button>
+                        <button class="${blocked?'success':'danger'}" onclick="toggleBlock('${d.id}', ${blocked})">${blocked?'Unblock':'Block'}</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        function openUserModal(uid) {
+            const user = (window.rawUsersList || []).find(u => u.id === uid);
+            if(!user) return;
+
+            document.getElementById('edit-user-uid').value = user.id;
+            document.getElementById('edit-user-uid-display').value = user.id;
+            document.getElementById('edit-user-name').value = user.name || '';
+            document.getElementById('edit-user-email').value = user.email || '';
+            document.getElementById('edit-user-balance').value = user.balance || 0;
+            document.getElementById('edit-user-lifetime').value = user.totalEarned || user.lifetimeCoins || 0;
+            document.getElementById('edit-user-friends').value = user.friendsInvited || user.referralsCount || user.referralCount || 0;
+            
+            let lastLoginFormatted = 'Never logged in';
+            if (user.lastLogin) {
+                try {
+                    const dt = new Date(user.lastLogin);
+                    if (!isNaN(dt.getTime())) lastLoginFormatted = dt.toLocaleString();
+                } catch(e) {}
+            }
+            document.getElementById('edit-user-lastlogin').value = lastLoginFormatted;
+            
+            document.getElementById('edit-user-refer-code').value = user.referCode || '';
+            document.getElementById('edit-user-referred-by').value = user.referredBy || '';
+            document.getElementById('edit-user-device-id').value = user.deviceId || '';
+            document.getElementById('edit-user-phone').value = user.phone || '';
+            document.getElementById('edit-user-blocked').checked = user.isBlocked === true;
+
+            document.getElementById('user-modal').classList.remove('hidden');
+        }
+
+        function closeUserModal() {
+            document.getElementById('user-modal').classList.add('hidden');
+        }
+
+        function saveUserModalData() {
+            const uid = document.getElementById('edit-user-uid').value;
+            if(!uid) return;
+
+            const updatedData = {
+                name: document.getElementById('edit-user-name').value.trim(),
+                email: document.getElementById('edit-user-email').value.trim(),
+                balance: parseInt(document.getElementById('edit-user-balance').value) || 0,
+                totalEarned: parseInt(document.getElementById('edit-user-lifetime').value) || 0,
+                friendsInvited: parseInt(document.getElementById('edit-user-friends').value) || 0,
+                referCode: document.getElementById('edit-user-refer-code').value.trim().toUpperCase(),
+                referredBy: document.getElementById('edit-user-referred-by').value.trim().toUpperCase(),
+                deviceId: document.getElementById('edit-user-device-id').value.trim(),
+                phone: document.getElementById('edit-user-phone').value.trim(),
+                isBlocked: document.getElementById('edit-user-blocked').checked
+            };
+
+            db.collection('users').doc(uid).update(updatedData).then(() => {
+                closeUserModal();
+                alert("User account updated successfully!");
+            }).catch(err => alert("Error updating user: " + err.message));
+        }
+
+        function clearUserDeviceBinding() {
+            const uid = document.getElementById('edit-user-uid').value;
+            if(!uid) return;
+            if(confirm("Reset bound device ID for this user? This removes device multi-account block for this user if they switched phones.")) {
+                db.collection('users').doc(uid).update({ deviceId: "" }).then(() => {
+                    document.getElementById('edit-user-device-id').value = "";
+                    alert("Device binding cleared successfully!");
+                }).catch(err => alert("Error: " + err.message));
+            }
+        }
+
+        function openUserHistoryModal(uid) {
+            const user = (window.rawUsersList || []).find(u => u.id === uid) || { id: uid };
+            const modal = document.getElementById('user-history-modal');
+            const infoEl = document.getElementById('user-history-info');
+            const tbody = document.getElementById('user-history-body');
+            if(!modal) return;
+
+            let lastLoginFormatted = 'Never';
+            if (user.lastLogin) {
+                try {
+                    const dt = new Date(user.lastLogin);
+                    if (!isNaN(dt.getTime())) lastLoginFormatted = dt.toLocaleString();
+                } catch(e) {}
+            }
+
+            infoEl.innerHTML = `
+                <div><strong>User:</strong> ${user.name || 'Unnamed'} (${user.email || 'No email'})</div>
+                <div><strong>UID:</strong> <code>${user.id}</code></div>
+                <div><strong>Balance:</strong> <strong style="color:#ffeb3b;">${user.balance || 0} Coins</strong></div>
+                <div><strong>👥 Friends Invited:</strong> <strong style="color:#00e676;">${user.friendsInvited || user.referralsCount || 0}</strong></div>
+                <div><strong>🕒 Last Login:</strong> ${lastLoginFormatted}</div>
+                <div><strong>📱 Device ID:</strong> <code style="color:#00e5ff;">${user.deviceId || 'None'}</code></div>
+            `;
+
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px;">Fetching point earnings and transaction history...</td></tr>';
+            modal.classList.remove('hidden');
+
+            db.collection('transactions').where('userId', '==', uid).get().then(snap => {
+                if(snap.empty) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">No earning transactions recorded yet for this user.</td></tr>';
+                    return;
+                }
+                const txList = [];
+                snap.forEach(doc => txList.push({ id: doc.id, ...doc.data() }));
+                txList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+                tbody.innerHTML = '';
+                txList.forEach(t => {
+                    const isCredit = t.type === 'credit' || (t.amount && t.amount > 0);
+                    const amountFormatted = isCredit ?
+                        `<span style="color:#00e676;font-weight:bold;">+${Math.abs(t.amount || 0)} 🪙</span>` :
+                        `<span style="color:#ff5252;font-weight:bold;">-${Math.abs(t.amount || 0)} 🪙</span>`;
+                    const typeBadge = isCredit ? '<span class="badge approved">EARNED</span>' : '<span class="badge rejected">SPENT</span>';
+                    const dateStr = t.timestamp ? new Date(t.timestamp).toLocaleString() : '-';
+
+                    tbody.innerHTML += `<tr>
+                        <td style="font-size:12px;color:#aaa;">${dateStr}</td>
+                        <td><strong>${t.title || t.description || 'Coin Reward'}</strong></td>
+                        <td>${typeBadge}</td>
+                        <td>${amountFormatted}</td>
+                        <td><span class="badge" style="background:#2A263D;color:#bbb;">${t.status || 'Completed'}</span></td>
+                    </tr>`;
+                });
+            }).catch(err => {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff5252;padding:20px;">Error loading history: ${err.message}</td></tr>`;
+            });
+        }
+
+        function closeUserHistoryModal() {
+            const modal = document.getElementById('user-history-modal');
+            if(modal) modal.classList.add('hidden');
+        }
+
+        function toggleBlock(uid, isBlocked) {
+            db.collection('users').doc(uid).update({ isBlocked: !isBlocked }).then(() => {
+                alert(`User account ${!isBlocked ? 'BLOCKED' : 'UNBLOCKED'} successfully.`);
+            }).catch(err => alert("Error: " + err.message));
+        }
+
+        // ======================= WITHDRAWALS =======================
+        function loadWithdrawals(snap) {
+            const tbody = document.getElementById('withdrawals-body');
+            tbody.innerHTML = '';
+            const sorted = [];
+            snap.forEach(d => sorted.push({id: d.id, ...d.data()}));
+            sorted.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 100).forEach(data => {
+                const badgeClass = data.status === 'pending' ? 'pending' : (data.status === 'approved' ? 'approved' : 'rejected');
+                const userDisplay = data.userName ? `<strong>${data.userName}</strong><br><span style="color:#888;font-size:11px;">${data.userEmail || data.userId}</span>` : (data.userEmail ? `<strong>${data.userEmail}</strong><br><span style="color:#888;font-size:10px;">${data.userId}</span>` : `<span style="font-size:11px;">${data.userId}</span>`);
+                const categoryBadge = `<span class="badge" style="background:#37474f;color:#eceff1;">${data.category || 'Withdrawal'}</span>`;
+                tbody.innerHTML += `<tr>
+                    <td>${userDisplay}</td>
+                    <td><strong>${data.method}</strong></td>
+                    <td>${categoryBadge}</td>
+                    <td style="color:#ffeb3b;font-weight:bold;">${data.details}</td>
+                    <td>${data.coins} Coins</td>
+                    <td>₹${data.rupees}</td>
+                    <td><span class="badge ${badgeClass}">${(data.status || 'PENDING').toUpperCase()}</span></td>
+                    <td>
+                        ${data.status === 'pending' ? `
+                            <button class="success" onclick="updateWithdrawal('${data.id}', 'approved', '${data.userId}', ${data.coins})">Approve</button>
+                            <button class="danger" onclick="updateWithdrawal('${data.id}', 'rejected', '${data.userId}', ${data.coins})">Reject</button>
+                        ` : '-'}
+                    </td>
+                </tr>`;
+            });
+        }
+
+        function updateWithdrawal(reqId, status, userId, coins) {
+            if(confirm(`Are you sure you want to ${status} this request?`)) {
+                const batch = db.batch();
+                batch.update(db.collection('withdraw_requests').doc(reqId), { status: status });
+                if(status === 'rejected') {
+                    batch.update(db.collection('users').doc(userId), {
+                        balance: firebase.firestore.FieldValue.increment(coins)
+                    });
+                }
+                
+                const notifRef = db.collection('notifications').doc();
+                batch.set(notifRef, {
+                    title: "Withdrawal " + (status === 'approved' ? "Approved" : "Rejected"),
+                    message: `Your withdrawal request for ${coins} coins has been ${status}.`,
+                    icon: "bank",
+                    timestamp: Date.now(),
+                    userId: userId
+                });
+                
+                batch.commit().then(() => alert("Updated successfully"));
+            }
+        }
+
+        function saveSettings() {
+            const spinMin = parseInt(document.getElementById('cfg-spin-min')?.value) || 1;
+            const spinMax = parseInt(document.getElementById('cfg-spin-max')?.value) || 200;
+            const scratchMin = parseInt(document.getElementById('cfg-scratch-min')?.value) || 1;
+            const scratchMax = parseInt(document.getElementById('cfg-scratch-max')?.value) || 200;
+
+            db.collection('settings').doc('config').set({
+                daily_bonus: (parseInt(document.getElementById('cfg-daily').value) || 0),
+                referral_referrer: (parseInt(document.getElementById('cfg-ref-referrer').value) || 0),
+                referral_referee: (parseInt(document.getElementById('cfg-ref-referee').value) || 0),
+                daily_streak_coins: document.getElementById('cfg-streak').value.split(',').map(n => parseInt(n.trim()) || 0),
+                
+                // Spin & Scratch Min/Max Coin Settings
+                spin_min_reward: spinMin,
+                spin_max_reward: spinMax,
+                spin_reward: spinMax, // fallback for legacy versions
+                spin_limit: (parseInt(document.getElementById('cfg-spin-limit').value) || 10),
+                scratch_min_reward: scratchMin,
+                scratch_max_reward: scratchMax,
+                scratch_reward: scratchMax, // fallback for legacy versions
+                scratch_limit: (parseInt(document.getElementById('cfg-scratch-limit').value) || 10),
+                
+                video_reward: (parseInt(document.getElementById('cfg-video-reward').value) || 20),
+                video_limit: (parseInt(document.getElementById('cfg-video-limit').value) || 10),
+                rate: (parseInt(document.getElementById('cfg-rate').value) || 100),
+
+                // eSewa & FF Diamond Limits
+                esewa_min_rupees: (parseInt(document.getElementById('cfg-esewa-min')?.value) || 100),
+                esewa_max_rupees: (parseInt(document.getElementById('cfg-esewa-max')?.value) || 500),
+                ff_diamond_rate: (parseInt(document.getElementById('cfg-ff-diamond-rate')?.value) || 115),
+
+                // Games Daily Limit & Cooldown (Minutes)
+                game_daily_limit: (parseInt(document.getElementById('cfg-game-daily-limit')?.value) || 10),
+                game_cooldown_minutes: (parseInt(document.getElementById('cfg-game-cooldown')?.value) !== undefined ? (parseInt(document.getElementById('cfg-game-cooldown')?.value) || 0) : 5),
+
+                // In-App Update Notice Config
+                app_update_enabled: document.getElementById('cfg-update-enabled')?.checked === true,
+                latest_version_name: (document.getElementById('cfg-update-version-name')?.value || '').trim(),
+                latest_version_code: (parseInt(document.getElementById('cfg-update-version-code')?.value) || 0),
+                app_update_title: (document.getElementById('cfg-update-title')?.value || '').trim() || "New Version Available!",
+                app_update_desc: (document.getElementById('cfg-update-desc')?.value || '').trim(),
+                app_update_link: (document.getElementById('cfg-update-link')?.value || '').trim(),
+                app_update_cancelable: document.getElementById('cfg-update-cancelable')?.checked !== false,
+                
+                // Contact & App download
+                app_download_link: document.getElementById('cfg-app-link').value.trim(),
+                whatsapp_link: document.getElementById('cfg-whatsapp').value.trim(),
+                youtube_link: document.getElementById('cfg-youtube').value.trim(),
+                tiktok_link: document.getElementById('cfg-tiktok').value.trim(),
+                telegram_link: document.getElementById('cfg-telegram').value.trim(),
+                instagram_link: document.getElementById('cfg-instagram').value.trim(),
+                support_email: document.getElementById('cfg-email').value.trim(),
+                
+                // Unity Ads
+                ads_enabled: document.getElementById('cfg-ads-enabled').checked,
+                unity_ads_enabled: document.getElementById('cfg-unity-enabled').checked,
+                unity_id: document.getElementById('cfg-unity-game-id').value.trim() || "5846818",
+                unity_game_id: document.getElementById('cfg-unity-game-id').value.trim() || "5846818",
+                unity_placement_id: document.getElementById('cfg-unity-placement').value.trim() || "Rewarded_Android",
+                unity_rewarded_placement_id: document.getElementById('cfg-unity-placement').value.trim() || "Rewarded_Android",
+                unity_interstitial_placement: (document.getElementById('cfg-unity-interstitial') ? document.getElementById('cfg-unity-interstitial').value.trim() : "Interstitial_Android") || "Interstitial_Android",
+                unity_interstitial_placement_id: (document.getElementById('cfg-unity-interstitial') ? document.getElementById('cfg-unity-interstitial').value.trim() : "Interstitial_Android") || "Interstitial_Android",
+                unity_banner_placement: (document.getElementById('cfg-unity-banner') ? document.getElementById('cfg-unity-banner').value.trim() : "Banner_Android") || "Banner_Android",
+                unity_banner_placement_id: (document.getElementById('cfg-unity-banner') ? document.getElementById('cfg-unity-banner').value.trim() : "Banner_Android") || "Banner_Android",
+                interstitial_interval_minutes: (document.getElementById('cfg-interstitial-interval') ? parseInt(document.getElementById('cfg-interstitial-interval').value) : 5) || 5,
+                unity_test_mode: document.getElementById('cfg-unity-test-mode').checked
+            }, {merge: true}).then(() => alert("All configuration saved successfully!"));
+        }
+
+        function showBannerForm() { document.getElementById('banner-form').classList.remove('hidden'); }
+        function hideBannerForm() { document.getElementById('banner-form').classList.add('hidden'); }
+        function saveBanner() {
+            db.collection('banners').add({
+                imageUrl: document.getElementById('banner-image').value,
+                link: document.getElementById('banner-link').value,
+                timestamp: Date.now()
+            }).then(() => {
+                hideBannerForm();
+                document.getElementById('banner-image').value = '';
+                document.getElementById('banner-link').value = '';
+            });
+        }
+
+        // ======================= CUSTOM OFFERS & TASKS =======================
+        function showOfferForm() {
+            document.getElementById('offer-form-title').innerText = "+ Add Custom Offer / Task";
+            document.getElementById('offer-id').value = '';
+            document.getElementById('offer-title').value = '';
+            document.getElementById('offer-desc').value = '';
+            document.getElementById('offer-url').value = '';
+            document.getElementById('offer-reward').value = '100';
+            document.getElementById('offer-timer').value = '30';
+            document.getElementById('offer-frequency').value = 'ONCE';
+            document.getElementById('offer-max-completions').value = '1';
+            document.getElementById('offer-active').checked = true;
+            updateOfferFrequencyHint();
+            document.getElementById('offer-form').classList.remove('hidden');
+        }
+
+        function hideOfferForm() {
+            document.getElementById('offer-form').classList.add('hidden');
+        }
+
+        function updateOfferFrequencyHint() {
+            const freq = document.getElementById('offer-frequency').value;
+            const hint = document.getElementById('offer-limit-hint');
+            const label = document.getElementById('offer-limit-label');
+            if (freq === 'DAILY') {
+                label.innerText = "Daily Limit: How Many Times User Can Complete Each Day";
+                hint.innerText = "🔄 Daily Repeat: Set how many times per day user can complete this same task (e.g. 1 = once every day, 2 = twice a day). Completions reset automatically every day.";
+            } else if (freq === 'ONCE') {
+                label.innerText = "One-Time Limit (1-Day / Single Completion)";
+                hint.innerText = "⏱️ 1-Day Only: User can complete this task 1 time only. Once completed, it cannot be done again.";
+            } else {
+                label.innerText = "Total Completion Limit";
+                hint.innerText = "🔢 Custom: Set the maximum total completions allowed per user.";
+            }
+        }
+
+        function editOffer(docId) {
+            const item = (window.allOffersList || []).find(o => o.id === docId);
+            if (!item) return;
+
+            document.getElementById('offer-form-title').innerText = "✏️ Edit Custom Offer / Task";
+            document.getElementById('offer-id').value = item.id;
+            document.getElementById('offer-title').value = item.title || '';
+            document.getElementById('offer-desc').value = item.description || '';
+            document.getElementById('offer-url').value = item.url || '';
+            document.getElementById('offer-reward').value = item.reward || 0;
+            document.getElementById('offer-timer').value = item.timer || 0;
+            document.getElementById('offer-frequency').value = item.frequency || 'ONCE';
+            document.getElementById('offer-max-completions').value = item.maxCompletions || 1;
+            document.getElementById('offer-active').checked = item.isActive !== false;
+            updateOfferFrequencyHint();
+            document.getElementById('offer-form').classList.remove('hidden');
+        }
+
+        function toggleOfferActive(docId, curActive) {
+            db.collection('offers').doc(docId).update({ isActive: !curActive }).then(() => {
+                alert(`Task ${!curActive ? 'ACTIVATED' : 'DEACTIVATED'} successfully.`);
+            }).catch(e => alert("Error: " + e.message));
+        }
+
+        function saveOffer() {
+            const title = document.getElementById('offer-title').value.trim();
+            if (!title) { alert("Please enter offer title"); return; }
+            const docId = document.getElementById('offer-id').value.trim();
+            const frequency = document.getElementById('offer-frequency').value;
+            const maxCompletions = parseInt(document.getElementById('offer-max-completions').value) || 1;
+            const reward = parseInt(document.getElementById('offer-reward').value) || 0;
+            const timer = parseInt(document.getElementById('offer-timer').value) || 0;
+            const url = document.getElementById('offer-url').value.trim();
+            const desc = document.getElementById('offer-desc').value.trim();
+            const isActive = document.getElementById('offer-active').checked;
+
+            const offerData = {
+                title: title,
+                description: desc,
+                url: url,
+                reward: reward,
+                timer: timer,
+                frequency: frequency,
+                maxCompletions: maxCompletions,
+                isActive: isActive,
+                timestamp: Date.now()
+            };
+
+            const ref = docId ? db.collection('offers').doc(docId) : db.collection('offers').doc();
+            ref.set(offerData, { merge: true }).then(() => {
+                hideOfferForm();
+                alert(`Task "${title}" saved successfully! Rule: ${frequency === 'DAILY' ? 'Daily (' + maxCompletions + '/day)' : '1-Day Only (' + maxCompletions + ' time)'}`);
+            }).catch(e => alert("Error saving offer: " + e.message));
+        }
+
+        function quickAddOfferPreset(presetType) {
+            const presets = {
+                youtube_1day: {
+                    title: "Subscribe to YouTube Channel",
+                    description: "Watch video for 30s and subscribe to get bonus coins",
+                    url: "https://www.youtube.com",
+                    reward: 100,
+                    timer: 30,
+                    frequency: "ONCE",
+                    maxCompletions: 1,
+                    isActive: true
+                },
+                daily_website: {
+                    title: "Visit Partner Website (Daily)",
+                    description: "Browse partner site for 20 seconds. Complete daily for fresh coins!",
+                    url: "https://www.google.com",
+                    reward: 60,
+                    timer: 20,
+                    frequency: "DAILY",
+                    maxCompletions: 1,
+                    isActive: true
+                },
+                daily_telegram: {
+                    title: "Check Telegram Announcements",
+                    description: "Open official Telegram channel and stay for 15s to claim daily reward",
+                    url: "https://t.me",
+                    reward: 80,
+                    timer: 15,
+                    frequency: "DAILY",
+                    maxCompletions: 1,
+                    isActive: true
+                },
+                daily_multi_watch: {
+                    title: "Daily Video Watch (3 Times/Day)",
+                    description: "Watch sponsored video clip for 25s. Can be completed 3 times every day!",
+                    url: "https://www.youtube.com",
+                    reward: 50,
+                    timer: 25,
+                    frequency: "DAILY",
+                    maxCompletions: 3,
+                    isActive: true
+                }
+            };
+
+            const item = presets[presetType];
+            if (item) {
+                db.collection('offers').add({ ...item, timestamp: Date.now() }).then(() => {
+                    alert(`Added preset: "${item.title}" (${item.frequency === 'DAILY' ? 'Daily ' + item.maxCompletions + '/day' : '1-Day Only'})`);
+                }).catch(e => alert("Error: " + e.message));
+            }
+        }
+
+        function resetOfferForUsers(offerId) {
+            if (!confirm('Are you sure you want to reset this task for all users?\n\nUsers who completed it previously will now see it active again in their app to earn coins and watch ads!')) return;
+            db.collection('offers').doc(offerId).update({
+                resetVersion: Date.now(),
+                timestamp: Date.now()
+            }).then(() => {
+                alert('✅ Task reset successfully! All users can now complete this task and watch ads again.');
+            }).catch(e => alert("Error resetting task: " + e.message));
+        }
+
+        function resetAllOffersForUsers() {
+            if (!confirm('Are you sure you want to reset ALL tasks for all users?\n\nAll completed tasks will appear active again for everyone in the app!')) return;
+            const now = Date.now();
+            const batch = db.batch();
+            (window.allOffersList || []).forEach(offer => {
+                const ref = db.collection('offers').doc(offer.id);
+                batch.update(ref, { resetVersion: now, timestamp: now });
+            });
+            batch.commit().then(() => {
+                alert('✅ All tasks have been reset for all users!');
+            }).catch(e => alert("Error: " + e.message));
+        }
+
+        // ======================= PLAY & EARN GAMES =======================
+        window.allGamesList = [];
+
+        function showGameForm() {
+            document.getElementById('game-form-title').innerText = "+ Add New Game";
+            document.getElementById('game-id').value = '';
+            document.getElementById('game-title').value = '';
+            document.getElementById('game-desc').value = '';
+            document.getElementById('game-link').value = '';
+            document.getElementById('game-coins').value = '50';
+            document.getElementById('game-seconds').value = '60';
+            document.getElementById('game-category').value = 'Arcade';
+            document.getElementById('game-icon').value = '';
+            document.getElementById('game-active').checked = true;
+            document.getElementById('game-form').classList.remove('hidden');
+            document.getElementById('game-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hideGameForm() {
+            document.getElementById('game-form').classList.add('hidden');
+        }
+
+        function saveGame() {
+            const title = document.getElementById('game-title').value.trim();
+            const link = document.getElementById('game-link').value.trim();
+            if (!title) { alert("Please enter the game title."); return; }
+            if (!link) { alert("Please enter the game link (URL)."); return; }
+
+            const docId = document.getElementById('game-id').value.trim();
+            const desc = document.getElementById('game-desc').value.trim();
+            const coins = parseInt(document.getElementById('game-coins').value) || 50;
+            const seconds = parseInt(document.getElementById('game-seconds').value) || 60;
+            const category = document.getElementById('game-category').value;
+            const icon = document.getElementById('game-icon').value.trim();
+            const isActive = document.getElementById('game-active').checked;
+
+            const gameData = {
+                title: title,
+                description: desc,
+                link: link,
+                coin: coins,
+                second: seconds,
+                category: category,
+                icon: icon,
+                isActive: isActive,
+                timestamp: Date.now()
+            };
+
+            const ref = docId ? db.collection('games').doc(docId) : db.collection('games').doc();
+            ref.set(gameData, { merge: true }).then(() => {
+                hideGameForm();
+                alert(`Game "${title}" saved successfully!`);
+            }).catch(e => alert("Error saving game: " + e.message));
+        }
+
+        function editGame(id) {
+            const game = (window.allGamesList || []).find(g => g.id === id);
+            if (!game) return;
+            document.getElementById('game-form-title').innerText = "✏️ Edit Game: " + (game.title || '');
+            document.getElementById('game-id').value = game.id;
+            document.getElementById('game-title').value = game.title || '';
+            document.getElementById('game-desc').value = game.description || '';
+            document.getElementById('game-link').value = game.link || '';
+            document.getElementById('game-coins').value = game.coin || game.coins || 50;
+            document.getElementById('game-seconds').value = game.second || game.seconds || 60;
+            document.getElementById('game-category').value = game.category || 'Arcade';
+            document.getElementById('game-icon').value = game.icon || '';
+            document.getElementById('game-active').checked = game.isActive !== false;
+            document.getElementById('game-form').classList.remove('hidden');
+            document.getElementById('game-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function deleteGame(id) {
+            if (!confirm("Are you sure you want to delete this game?")) return;
+            db.collection('games').doc(id).delete().then(() => {
+                alert("Game deleted successfully.");
+            }).catch(e => alert("Error deleting game: " + e.message));
+        }
+
+        function toggleGameStatus(id, currentStatus) {
+            db.collection('games').doc(id).update({
+                isActive: !currentStatus
+            }).then(() => {
+                alert(`Game ${!currentStatus ? 'ACTIVATED' : 'DEACTIVATED'} successfully.`);
+            }).catch(e => alert("Error: " + e.message));
+        }
+
+        function renderGamesTable(listToRender) {
+            const list = listToRender || window.allGamesList || [];
+            const tbody = document.getElementById('games-body');
+            const countLabel = document.getElementById('games-count-label');
+            if (countLabel) countLabel.innerText = `Showing ${list.length} games`;
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:24px;">No games found. Click "+ Add New Game" or "⚡ Seed 5 Popular Games" above!</td></tr>';
+                return;
+            }
+
+            list.forEach(game => {
+                const isActive = game.isActive !== false;
+                const statusBadge = isActive ? '<span class="badge approved">ACTIVE</span>' : '<span class="badge rejected">INACTIVE</span>';
+                const coins = game.coin || game.coins || 50;
+                const seconds = game.second || game.seconds || 60;
+                tbody.innerHTML += `<tr>
+                    <td>
+                        <strong>${game.title || 'Untitled'}</strong>
+                        ${game.description ? `<br><small style="color:#aaa;">${game.description}</small>` : ''}
+                    </td>
+                    <td><span class="badge" style="background:rgba(123,63,228,0.3);color:#bb86fc;">${game.category || 'Arcade'}</span></td>
+                    <td><strong style="color:#ffc107;">+${coins}</strong> 🪙</td>
+                    <td>⏱️ ${seconds}s</td>
+                    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        <a href="${game.link || '#'}" target="_blank" style="color:#64b5f6;text-decoration:none;">${game.link || '-'}</a>
+                    </td>
+                    <td>${statusBadge}</td>
+                    <td style="white-space:nowrap;">
+                        <a href="${game.link || '#'}" target="_blank" style="text-decoration:none;"><button style="background:#00BFA5;padding:6px 12px;font-size:12px;">▶️ Play</button></a>
+                        <button class="btn-edit" style="padding:6px 12px;font-size:12px;" onclick="editGame('${game.id}')">✏️ Edit</button>
+                        <button class="${isActive ? 'danger' : 'success'}" style="padding:6px 12px;font-size:12px;" onclick="toggleGameStatus('${game.id}', ${isActive})">${isActive ? 'Deactivate' : 'Activate'}</button>
+                        <button class="danger" style="padding:6px 12px;font-size:12px;" onclick="deleteGame('${game.id}')">🗑️</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        function filterGamesTable() {
+            const query = (document.getElementById('search-games').value || '').toLowerCase().trim();
+            if (!query) {
+                renderGamesTable(window.allGamesList);
+                return;
+            }
+            const filtered = (window.allGamesList || []).filter(g => 
+                (g.title || '').toLowerCase().includes(query) ||
+                (g.category || '').toLowerCase().includes(query) ||
+                (g.description || '').toLowerCase().includes(query)
+            );
+            renderGamesTable(filtered);
+        }
+
+        function seedDefaultGames() {
+            if (!confirm("Seed 5 popular HTML5 games into the database?")) return;
+            const defaultGames = [
+                {
+                    title: "2048 Classic",
+                    description: "Join the numbers and get to the 2048 tile! Swipe to merge matching numbers.",
+                    link: "https://play2048.co/",
+                    coin: 50,
+                    second: 60,
+                    category: "Puzzle",
+                    icon: "https://images.unsplash.com/photo-1611996575749-79a3a250f948?w=300",
+                    isActive: true,
+                    timestamp: Date.now()
+                },
+                {
+                    title: "Flappy Bird",
+                    description: "Tap to flap your wings and navigate safely through the pipes.",
+                    link: "https://flappybird.io/",
+                    coin: 40,
+                    second: 45,
+                    category: "Arcade",
+                    icon: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=300",
+                    isActive: true,
+                    timestamp: Date.now()
+                },
+                {
+                    title: "Tower Building Stacker",
+                    description: "Stack blocks higher and higher to build the tallest skyscraper.",
+                    link: "https://www.towergame.app/",
+                    coin: 60,
+                    second: 60,
+                    category: "Casual",
+                    icon: "https://images.unsplash.com/photo-1534423861386-85a16f5d13fd?w=300",
+                    isActive: true,
+                    timestamp: Date.now()
+                },
+                {
+                    title: "Hextris",
+                    description: "Fast-paced hexagonal puzzle game inspired by Tetris. Clear rows of matching colored blocks.",
+                    link: "https://hextris.io/",
+                    coin: 50,
+                    second: 60,
+                    category: "Puzzle",
+                    icon: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=300",
+                    isActive: true,
+                    timestamp: Date.now()
+                },
+                {
+                    title: "Tic Tac Toe Online",
+                    description: "Classic X and O strategy board game. Beat the AI to win coins.",
+                    link: "https://playtictactoe.org/",
+                    coin: 30,
+                    second: 30,
+                    category: "Strategy",
+                    icon: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300",
+                    isActive: true,
+                    timestamp: Date.now()
+                }
+            ];
+
+            const batch = db.batch();
+            defaultGames.forEach(g => {
+                const ref = db.collection('games').doc();
+                batch.set(ref, g);
+            });
+
+            batch.commit().then(() => {
+                alert("✅ 5 Popular HTML5 games seeded successfully! Users can now play and earn coins.");
+            }).catch(e => alert("Error seeding games: " + e.message));
+        }
+
+        // ======================= WALLET & PAYMENT METHODS =======================
+        window.allPaymentMethods = [];
+        window.currentCategoryFilter = 'all';
+
+        function toggleAmountFields() {
+            const mode = document.getElementById('payment-amount-mode').value;
+            const wrapFixed = document.getElementById('wrapper-fixed-coins');
+            const wrapMin = document.getElementById('wrapper-min-coins');
+            const wrapMax = document.getElementById('wrapper-max-coins');
+
+            if (mode === 'RANGE') {
+                wrapFixed.classList.add('hidden');
+                wrapMin.classList.remove('hidden');
+                wrapMax.classList.remove('hidden');
+            } else {
+                wrapFixed.classList.remove('hidden');
+                wrapMin.classList.add('hidden');
+                wrapMax.classList.add('hidden');
+            }
+        }
+
+        function setCategoryFilter(cat) {
+            window.currentCategoryFilter = cat;
+            ['all', 'esewa', 'ff', 'robux', 'pubg'].forEach(c => {
+                const btn = document.getElementById(`btn-cat-${c}`);
+                if(btn) {
+                    const match = (c === 'all' && cat === 'all') ||
+                        (c === 'esewa' && cat === 'eSewa') ||
+                        (c === 'ff' && cat === 'FF Diamond') ||
+                        (c === 'robux' && cat === 'Robux') ||
+                        (c === 'pubg' && cat === 'PUBG');
+                    btn.style.background = match ? 'var(--primary)' : '#2E2B3E';
+                }
+            });
+            renderPaymentMethodsTable();
+        }
+
+        function renderPaymentMethodsTable() {
+            const tbody = document.getElementById('payments-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+
+            const list = (window.allPaymentMethods || []).filter(item => {
+                if(window.currentCategoryFilter === 'all') return true;
+                return (item.category || item.type || 'eSewa').toLowerCase() === window.currentCategoryFilter.toLowerCase();
+            });
+
+            if(list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:20px;">No withdrawal options in this category. Click "+ Add Withdrawal Option" or use Quick Presets above!</td></tr>';
+                return;
+            }
+
+            list.forEach(d => {
+                const iconEmoji = d.icon === 'esewa' ? '🇳🇵' : (d.icon === 'fire' ? '💎' : (d.icon === 'robux' ? '🪙' : (d.icon === 'pubg' ? '🎯' : '💳')));
+                const badgeHtml = d.badge ? `<span class="badge approved" style="font-size:10px;margin-left:5px;">${d.badge}</span>` : '';
+                
+                const isFixed = d.amountMode === 'FIXED' || d.amountType === 'FIXED' || (!d.amountMode && !d.amountType && (!d.minCoins || !d.maxCoins || d.minCoins === d.maxCoins));
+                
+                let coinsDisplay = '';
+                if (isFixed) {
+                    const fixed = d.fixedCoins || d.minCoins || ((d.minimumAmount || 10) * 100);
+                    coinsDisplay = `<span class="badge approved" style="background:#1b5e20;color:#fff;font-weight:bold;margin-right:6px;font-size:11px;">🔒 FIXED</span><strong style="color:#00e676;font-size:14px;">${fixed}</strong> Coins`;
+                } else {
+                    coinsDisplay = `<span class="badge pending" style="background:#e65100;color:#fff;font-weight:bold;margin-right:6px;font-size:11px;">↔️ RANGE</span><strong style="color:#00e676;font-size:14px;">${d.minCoins || 500} - ${d.maxCoins || 10000}</strong> Coins`;
+                }
+
+                const categoryName = d.category || 'eSewa';
+
+                tbody.innerHTML += `<tr>
+                    <td><strong>${iconEmoji} ${d.name}</strong>${badgeHtml}</td>
+                    <td><span class="badge pending" style="letter-spacing:0.5px;">${categoryName}</span></td>
+                    <td>${coinsDisplay}</td>
+                    <td><small style="color:#aaa;">${d.placeholder || '-'}</small></td>
+                    <td><small style="color:#888;">${d.description || '-'}</small></td>
+                    <td><span class="badge ${d.isActive !== false ? 'approved' : 'rejected'}">${d.isActive !== false ? 'ACTIVE':'INACTIVE'}</span></td>
+                    <td style="white-space:nowrap;">
+                        <button class="btn-edit" onclick="editPaymentMethod('${d.id}')">✏️ Edit</button>
+                        <button class="${d.isActive !== false ? 'danger' : 'success'}" onclick="togglePaymentActive('${d.id}', ${d.isActive !== false})">${d.isActive !== false ? 'Deactivate' : 'Activate'}</button>
+                        <button class="danger" onclick="deleteDoc('payment_methods','${d.id}')">Remove</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        function showPaymentForm() {
+            document.getElementById('payment-form-title').innerText = "+ Add Withdrawal Option";
+            document.getElementById('payment-doc-id').value = '';
+            document.getElementById('payment-name').value = '';
+            document.getElementById('payment-category').value = 'eSewa';
+            document.getElementById('payment-amount-mode').value = 'FIXED';
+            document.getElementById('payment-fixed-coins').value = '1000';
+            document.getElementById('payment-min-coins').value = '1000';
+            document.getElementById('payment-max-coins').value = '1000';
+            document.getElementById('payment-min').value = '10';
+            document.getElementById('payment-placeholder').value = '';
+            document.getElementById('payment-desc').value = '';
+            document.getElementById('payment-badge').value = '';
+            document.getElementById('payment-icon').value = 'esewa';
+            document.getElementById('payment-active').checked = true;
+            toggleAmountFields();
+            document.getElementById('payment-form').classList.remove('hidden');
+        }
+
+        function hidePaymentForm() {
+            document.getElementById('payment-form').classList.add('hidden');
+        }
+
+        function editPaymentMethod(docId) {
+            const item = (window.allPaymentMethods || []).find(m => m.id === docId);
+            if(!item) return;
+
+            document.getElementById('payment-form-title').innerText = "✏️ Edit Withdrawal Option";
+            document.getElementById('payment-doc-id').value = item.id;
+            document.getElementById('payment-name').value = item.name || '';
+            
+            const allowedCats = ['eSewa', 'FF Diamond', 'Robux', 'PUBG'];
+            const cat = item.category || 'eSewa';
+            document.getElementById('payment-category').value = allowedCats.includes(cat) ? cat : 'eSewa';
+
+            const isFixed = item.amountMode === 'FIXED' || item.amountType === 'FIXED' || (!item.amountMode && !item.amountType && (!item.minCoins || !item.maxCoins || item.minCoins === item.maxCoins));
+            const mode = isFixed ? 'FIXED' : 'RANGE';
+            document.getElementById('payment-amount-mode').value = mode;
+            const fixedVal = item.fixedCoins || item.minCoins || ((item.minimumAmount || 10) * 100);
+            document.getElementById('payment-fixed-coins').value = fixedVal;
+            document.getElementById('payment-min-coins').value = item.minCoins || (isFixed ? fixedVal : 500);
+            document.getElementById('payment-max-coins').value = item.maxCoins || (isFixed ? fixedVal : 10000);
+            document.getElementById('payment-min').value = item.minimumAmount || 10;
+            document.getElementById('payment-placeholder').value = item.placeholder || '';
+            document.getElementById('payment-desc').value = item.description || '';
+            document.getElementById('payment-badge').value = item.badge || '';
+            document.getElementById('payment-icon').value = item.icon || 'card';
+            document.getElementById('payment-active').checked = item.isActive !== false;
+
+            toggleAmountFields();
+            document.getElementById('payment-form').classList.remove('hidden');
+        }
+
+        function savePaymentMethod() {
+            const name = document.getElementById('payment-name').value.trim();
+            if(!name) { alert("Please enter a withdrawal name"); return; }
+            
+            const category = document.getElementById('payment-category').value;
+            const docId = document.getElementById('payment-doc-id').value.trim() || name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const amountMode = document.getElementById('payment-amount-mode').value;
+            const isFixed = amountMode === 'FIXED';
+            const fixedCoins = parseInt(document.getElementById('payment-fixed-coins').value) || 1000;
+            const minCoins = parseInt(document.getElementById('payment-min-coins').value) || (isFixed ? fixedCoins : 500);
+            const maxCoins = parseInt(document.getElementById('payment-max-coins').value) || (isFixed ? fixedCoins : 10000);
+            const minimumAmount = parseInt(document.getElementById('payment-min').value) || Math.floor(fixedCoins / 100);
+
+            const data = {
+                id: docId,
+                name: name,
+                category: category,
+                type: category === 'eSewa' ? 'wallet' : 'game',
+                amountMode: amountMode,
+                amountType: amountMode,
+                fixedCoins: isFixed ? fixedCoins : minCoins,
+                minCoins: isFixed ? fixedCoins : minCoins,
+                maxCoins: isFixed ? fixedCoins : maxCoins,
+                minimumAmount: minimumAmount,
+                placeholder: document.getElementById('payment-placeholder').value.trim(),
+                description: document.getElementById('payment-desc').value.trim(),
+                icon: document.getElementById('payment-icon').value,
+                badge: document.getElementById('payment-badge').value.trim(),
+                isActive: document.getElementById('payment-active').checked,
+                timestamp: Date.now()
+            };
+
+            db.collection('payment_methods').doc(docId).set(data, { merge: true }).then(() => {
+                hidePaymentForm();
+                alert(`Saved withdrawal option: ${name} (${category}) - ${isFixed ? 'Fixed ' + fixedCoins + ' Coins' : 'Range ' + minCoins + '-' + maxCoins + ' Coins'}`);
+            }).catch(e => alert("Error saving option: " + e.message));
+        }
+
+        function togglePaymentActive(id, cur) {
+            db.collection('payment_methods').doc(id).update({ isActive: !cur });
+        }
+
+        function quickAddGiftCard(type) {
+            const presets = {
+                esewa: {
+                    id: 'esewa_100npr',
+                    name: 'eSewa 100 NPR',
+                    category: 'eSewa',
+                    type: 'wallet',
+                    icon: 'esewa',
+                    amountMode: 'FIXED',
+                    amountType: 'FIXED',
+                    fixedCoins: 1000,
+                    minCoins: 1000,
+                    maxCoins: 1000,
+                    minimumAmount: 100,
+                    placeholder: 'Enter 10-digit eSewa Registered Mobile Number',
+                    description: 'Direct instant NPR transfer to your eSewa wallet',
+                    badge: 'POPULAR',
+                    isActive: true
+                },
+                free_fire_100: {
+                    id: 'ff_100_diamonds',
+                    name: '100 Free Fire Diamonds',
+                    category: 'FF Diamond',
+                    type: 'game',
+                    icon: 'fire',
+                    amountMode: 'FIXED',
+                    fixedCoins: 1500,
+                    minCoins: 1500,
+                    maxCoins: 1500,
+                    minimumAmount: 80,
+                    placeholder: 'Enter Free Fire Player UID & In-game Nickname',
+                    description: 'Instant 100 Diamonds Top-up directly sent to UID',
+                    badge: 'POPULAR',
+                    isActive: true
+                },
+                free_fire_310: {
+                    id: 'ff_310_diamonds',
+                    name: '310 Free Fire Diamonds',
+                    category: 'FF Diamond',
+                    type: 'game',
+                    icon: 'fire',
+                    amountMode: 'FIXED',
+                    fixedCoins: 4000,
+                    minCoins: 4000,
+                    maxCoins: 4000,
+                    minimumAmount: 240,
+                    placeholder: 'Enter Free Fire Player UID & In-game Nickname',
+                    description: 'Mega 310 Diamonds Top-up directly sent to UID',
+                    badge: 'HOT',
+                    isActive: true
+                },
+                robux_80: {
+                    id: 'robux_80',
+                    name: '80 Robux (Roblox)',
+                    category: 'Robux',
+                    type: 'game',
+                    icon: 'robux',
+                    amountMode: 'FIXED',
+                    fixedCoins: 2000,
+                    minCoins: 2000,
+                    maxCoins: 2000,
+                    minimumAmount: 100,
+                    placeholder: 'Enter Roblox Username',
+                    description: 'Direct Robux group payout or gamepass gift code',
+                    badge: 'HOT',
+                    isActive: true
+                },
+                robux_400: {
+                    id: 'robux_400',
+                    name: '400 Robux (Roblox)',
+                    category: 'Robux',
+                    type: 'game',
+                    icon: 'robux',
+                    amountMode: 'FIXED',
+                    fixedCoins: 8000,
+                    minCoins: 8000,
+                    maxCoins: 8000,
+                    minimumAmount: 400,
+                    placeholder: 'Enter Roblox Username',
+                    description: '400 Robux digital voucher code',
+                    badge: 'MEGA',
+                    isActive: true
+                },
+                pubg_60: {
+                    id: 'pubg_60_uc',
+                    name: 'PUBG 60 UC',
+                    category: 'PUBG',
+                    type: 'game',
+                    icon: 'pubg',
+                    amountMode: 'FIXED',
+                    fixedCoins: 1500,
+                    minCoins: 1500,
+                    maxCoins: 1500,
+                    minimumAmount: 60,
+                    placeholder: 'Enter PUBG Character ID & In-game Name',
+                    description: 'Instant 60 UC Top-up sent directly to your Player ID',
+                    badge: 'POPULAR',
+                    isActive: true
+                },
+                pubg_325: {
+                    id: 'pubg_325_uc',
+                    name: 'PUBG 325 UC',
+                    category: 'PUBG',
+                    type: 'game',
+                    icon: 'pubg',
+                    amountMode: 'FIXED',
+                    fixedCoins: 5000,
+                    minCoins: 5000,
+                    maxCoins: 5000,
+                    minimumAmount: 325,
+                    placeholder: 'Enter PUBG Character ID & In-game Name',
+                    description: '325 UC Top-up voucher directly credited to account',
+                    badge: 'HOT',
+                    isActive: true
+                },
+                pubg_660: {
+                    id: 'pubg_660_uc',
+                    name: 'PUBG 660 UC (Royal Pass)',
+                    category: 'PUBG',
+                    type: 'game',
+                    icon: 'pubg',
+                    amountMode: 'FIXED',
+                    fixedCoins: 9500,
+                    minCoins: 9500,
+                    maxCoins: 9500,
+                    minimumAmount: 660,
+                    placeholder: 'Enter PUBG Character ID & In-game Name',
+                    description: 'Full Elite Royal Pass 660 UC package',
+                    badge: 'MEGA',
+                    isActive: true
+                }
+            };
+
+            const item = presets[type];
+            if(item) {
+                const toSave = { ...item, amountType: item.amountMode || 'FIXED' };
+                db.collection('payment_methods').doc(item.id).set(toSave, { merge: true }).then(() => {
+                    alert(`${item.name} (${item.category}) added successfully! It is now active in the user app.`);
+                }).catch(err => alert("Error: " + err.message));
+            }
+        }
+
+        function seedAllPaymentMethods() {
+            if(confirm("This will seed all 4 requested categories (eSewa, FF Diamond, Robux, PUBG) with instant withdrawal options. Continue?")) {
+                ['esewa', 'free_fire_100', 'free_fire_310', 'robux_80', 'robux_400', 'pubg_60', 'pubg_325', 'pubg_660'].forEach(k => quickAddGiftCard(k));
+            }
+        }
+
+        function toggleNotifTarget() {
+            const isSingle = document.getElementById('notif-target-single')?.checked;
+            const container = document.getElementById('notif-user-select-container');
+            if(container) {
+                if(isSingle) {
+                    container.classList.remove('hidden');
+                } else {
+                    container.classList.add('hidden');
+                }
+            }
+        }
+
+        function onNotifUserSelected() {
+            const dropdown = document.getElementById('notif-user-dropdown');
+            const uidInput = document.getElementById('notif-user-uid');
+            if(dropdown && uidInput && dropdown.value) {
+                uidInput.value = dropdown.value;
+            }
+        }
+
+        function sendNotification() {
+            const title = document.getElementById('notif-title').value.trim();
+            const body = document.getElementById('notif-body').value.trim();
+            if(!title || !body) {
+                alert("Please enter notification title and message.");
+                return;
+            }
+
+            const isBroadcast = document.getElementById('notif-target-all')?.checked !== false;
+            let targetUid = 'all';
+            let targetType = 'all';
+
+            if(!isBroadcast) {
+                const manualUid = (document.getElementById('notif-user-uid')?.value || '').trim();
+                const dropdownUid = (document.getElementById('notif-user-dropdown')?.value || '').trim();
+                targetUid = manualUid || dropdownUid;
+                targetType = 'single';
+
+                if(!targetUid) {
+                    alert("Please select a user from the dropdown or enter a valid User UID to send targeted notification.");
+                    return;
+                }
+            }
+
+            const icon = document.getElementById('notif-icon')?.value || 'bell';
+            const imageUrl = (document.getElementById('notif-image')?.value || '').trim();
+
+            const notifPayload = {
+                title: title,
+                message: body,
+                body: body,
+                imageUrl: imageUrl,
+                icon: icon,
+                target: targetType,
+                userId: targetUid,
+                timestamp: Date.now()
+            };
+
+            db.collection('notifications').add(notifPayload).then(() => {
+                document.getElementById('notif-title').value = '';
+                document.getElementById('notif-body').value = '';
+                if(document.getElementById('notif-image')) document.getElementById('notif-image').value = '';
+                if(document.getElementById('notif-user-uid')) document.getElementById('notif-user-uid').value = '';
+                alert(targetType === 'all' ? "✅ Notification broadcasted to all users successfully!" : `✅ Targeted notification sent to user ${targetUid}!`);
+            }).catch(err => alert("Error sending notification: " + err.message));
+        }
+
+        // Coupon Functions
+        function showCouponForm() {
+            document.getElementById('coupon-form').classList.remove('hidden');
+        }
+
+        function hideCouponForm() {
+            document.getElementById('coupon-form').classList.add('hidden');
+        }
+
+        function saveCoupon() {
+            const rawCode = document.getElementById('coupon-code').value.trim();
+            if(!rawCode) { alert("Please enter a coupon code"); return; }
+            const code = rawCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const reward = parseInt(document.getElementById('coupon-reward').value) || 0;
+            if(reward <= 0) { alert("Coins reward must be greater than 0"); return; }
+            const maxUses = parseInt(document.getElementById('coupon-max-uses').value) || 0;
+            const desc = document.getElementById('coupon-desc').value.trim();
+            const isActive = document.getElementById('coupon-active').checked;
+
+            db.collection('coupons').doc(code).set({
+                id: code,
+                code: code,
+                reward: reward,
+                maxUses: maxUses,
+                usedCount: 0,
+                description: desc || ("Promo Code " + code),
+                isActive: isActive,
+                createdAt: Date.now()
+            }, { merge: true }).then(() => {
+                hideCouponForm();
+                document.getElementById('coupon-code').value = '';
+                document.getElementById('coupon-desc').value = '';
+                alert("Coupon '" + code + "' created and activated successfully! Users can now redeem it in the Earn page.");
+            }).catch(err => alert("Error: " + err.message));
+        }
+
+        function quickCreateCoupon(code, reward, maxUses, desc) {
+            db.collection('coupons').doc(code).set({
+                id: code,
+                code: code,
+                reward: reward,
+                maxUses: maxUses,
+                usedCount: 0,
+                description: desc,
+                isActive: true,
+                createdAt: Date.now()
+            }, { merge: true }).then(() => {
+                alert("Coupon '" + code + "' (+ " + reward + " Coins) created successfully!");
+            }).catch(err => alert("Error: " + err.message));
+        }
+
+        function toggleCouponActive(code, cur) {
+            db.collection('coupons').doc(code).update({ isActive: !cur });
+        }
+
+        function deleteCoupon(code) {
+            if(confirm("Are you sure you want to delete coupon '" + code + "'?")) {
+                db.collection('coupons').doc(code).delete();
+            }
+        }
+
+        // ======================= PAGE NOTICES (IN-APP ALERTS) =======================
+        window.allPageNoticesList = [];
+        window.currentPageNoticeFilter = 'all_filter';
+
+        function showPageNoticeForm() {
+            document.getElementById('page-notice-form-title').innerText = "Create In-App Page Notice";
+            document.getElementById('page-notice-id').value = '';
+            document.getElementById('notice-title').value = '';
+            document.getElementById('notice-message').value = '';
+            document.getElementById('notice-page-id').value = 'all';
+            document.getElementById('notice-type').value = 'warning';
+            document.getElementById('notice-active').checked = true;
+            document.getElementById('page-notice-form').classList.remove('hidden');
+            document.getElementById('page-notice-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hidePageNoticeForm() {
+            document.getElementById('page-notice-form').classList.add('hidden');
+        }
+
+        function filterPageNotices(filter) {
+            window.currentPageNoticeFilter = filter;
+            const buttons = ['all_filter', 'wallet', 'home', 'earn', 'spin', 'scratch', 'games', 'tasks'];
+            buttons.forEach(k => {
+                const btn = document.getElementById(`btn-notice-${k.replace('_filter', '')}`);
+                if (btn) {
+                    btn.style.background = (k === filter) ? 'var(--primary)' : '#2E2B3E';
+                }
+            });
+            renderPageNotices();
+        }
+
+        function renderPageNotices() {
+            const tbody = document.getElementById('page-notices-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+
+            const list = window.allPageNoticesList || [];
+            const filter = window.currentPageNoticeFilter || 'all_filter';
+            const filtered = (filter === 'all_filter') ? list : list.filter(n => n.pageId === filter || (filter !== 'all_filter' && n.pageId === 'all'));
+
+            if(filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:24px;">No page notices posted yet. Click "+ Create New Page Notice" or use the Quick Presets above!</td></tr>';
+                return;
+            }
+
+            const pageLabels = {
+                'all': '🌐 All Pages (Global)',
+                'wallet': '💳 Wallet & Withdraw',
+                'home': '🏠 Home Screen',
+                'earn': '💰 Earn Dashboard',
+                'spin': '🎡 Spin Wheel',
+                'scratch': '🎟️ Scratch Card',
+                'watch': '📺 Watch Videos',
+                'bonus': '🎁 Daily Bonus',
+                'games': '🎮 Play Games',
+                'tasks': '📋 Custom Tasks',
+                'coupon': '🎫 Redeem Coupon',
+                'refer': '👥 Refer & Earn',
+                'leaderboard': '🏆 Leaderboard',
+                'history': '📜 History',
+                'contact': '💬 Support & Contact',
+                'settings': '⚙️ Settings',
+                'social': '🌐 Social Media',
+                'profile': '👤 Profile',
+                'notifications': '🔔 Notifications'
+            };
+
+            const typeBadges = {
+                'warning': '<span class="badge" style="background:#ff9800;color:#000;font-weight:bold;">⚠️ WARNING / ISSUE</span>',
+                'info': '<span class="badge" style="background:#00bcd4;color:#000;font-weight:bold;">ℹ️ INFO / UPDATE</span>',
+                'error': '<span class="badge rejected" style="font-weight:bold;">🚨 CRITICAL ERROR</span>',
+                'success': '<span class="badge approved" style="font-weight:bold;">✅ RESOLVED / PROMO</span>'
+            };
+
+            filtered.forEach(item => {
+                const pageText = pageLabels[item.pageId] || item.pageId || '🌐 Global';
+                const typeHtml = typeBadges[item.type] || item.type;
+                const statusHtml = item.isActive !== false ?
+                    '<span class="badge approved" style="font-weight:bold;">LIVE IN APP</span>' :
+                    '<span class="badge rejected">HIDDEN</span>';
+                const dateText = item.timestamp ? new Date(item.timestamp).toLocaleString() : '-';
+
+                tbody.innerHTML += `<tr>
+                    <td><strong style="color: #fff;">${pageText}</strong></td>
+                    <td>${typeHtml}</td>
+                    <td>
+                        <div style="font-weight: bold; color: #ffeb3b; margin-bottom: 3px;">${escapeHtml(item.title || '')}</div>
+                        <div style="color: var(--text-muted); font-size: 12px; line-height: 1.4; max-width: 320px;">${escapeHtml(item.message || '')}</div>
+                    </td>
+                    <td style="font-size: 11px; color: #888;">${dateText}</td>
+                    <td>${statusHtml}</td>
+                    <td style="white-space: nowrap;">
+                        <button style="background: ${item.isActive !== false ? '#c62828' : '#2e7d32'}; color: white; padding: 5px 8px; font-size: 12px;" onclick="togglePageNoticeActive('${item.id}', ${item.isActive !== false})">
+                            ${item.isActive !== false ? 'Hide' : 'Activate'}
+                        </button>
+                        <button style="padding: 5px 8px; font-size: 12px;" onclick="editPageNotice('${item.id}')">Edit</button>
+                        <button class="danger" style="padding: 5px 8px; font-size: 12px;" onclick="deletePageNotice('${item.id}')">Delete</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function savePageNotice() {
+            const pageId = document.getElementById('notice-page-id').value;
+            const type = document.getElementById('notice-type').value;
+            const title = document.getElementById('notice-title').value.trim();
+            const message = document.getElementById('notice-message').value.trim();
+            const isActive = document.getElementById('notice-active').checked;
+            const existingId = document.getElementById('page-notice-id').value;
+
+            if(!title || !message) {
+                alert("Please fill in both the notice title and message.");
+                return;
+            }
+
+            const payload = {
+                pageId: pageId,
+                type: type,
+                title: title,
+                message: message,
+                isActive: isActive,
+                timestamp: Date.now()
+            };
+
+            const docRef = existingId ? db.collection('page_notices').doc(existingId) : db.collection('page_notices').doc();
+            payload.id = docRef.id;
+
+            docRef.set(payload, { merge: true }).then(() => {
+                hidePageNoticeForm();
+                alert(`Notice "${title}" saved successfully! It is now ${isActive ? 'LIVE' : 'hidden'} on the app's ${pageId} screen.`);
+            }).catch(e => alert("Error saving page notice: " + e.message));
+        }
+
+        function editPageNotice(id) {
+            const item = (window.allPageNoticesList || []).find(n => n.id === id);
+            if(!item) return;
+            document.getElementById('page-notice-form-title').innerText = "Edit In-App Page Notice";
+            document.getElementById('page-notice-id').value = item.id;
+            document.getElementById('notice-page-id').value = item.pageId || 'all';
+            document.getElementById('notice-type').value = item.type || 'warning';
+            document.getElementById('notice-title').value = item.title || '';
+            document.getElementById('notice-message').value = item.message || '';
+            document.getElementById('notice-active').checked = item.isActive !== false;
+            document.getElementById('page-notice-form').classList.remove('hidden');
+            document.getElementById('page-notice-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function togglePageNoticeActive(id, curState) {
+            db.collection('page_notices').doc(id).update({ isActive: !curState }).then(() => {
+                // state updated in realtime
+            }).catch(e => alert("Error toggling notice: " + e.message));
+        }
+
+        function deletePageNotice(id) {
+            if(confirm("Are you sure you want to remove this notice from user app screens?")) {
+                db.collection('page_notices').doc(id).delete();
+            }
+        }
+
+        function quickAddPageNotice(key) {
+            const presets = {
+                wallet_esewa: {
+                    pageId: 'wallet',
+                    type: 'warning',
+                    title: 'eSewa Withdrawal Server Delay',
+                    message: 'Dear users, eSewa bank server is currently busy. Withdrawals between 100-500 NPR may take 2-4 hours to process. Your coins and payouts are 100% safe.',
+                    isActive: true
+                },
+                spin_maint: {
+                    pageId: 'spin',
+                    type: 'warning',
+                    title: 'Spin Wheel Maintenance Notice',
+                    message: 'We are currently updating our spin wheel reward system. You can spin normally and all earned coins will be safely credited.',
+                    isActive: true
+                },
+                tasks_verify: {
+                    pageId: 'tasks',
+                    type: 'info',
+                    title: 'Task Verification Notice',
+                    message: 'Completed offer tasks are checked and coins credited within 15-30 minutes. Please keep the required apps installed during verification.',
+                    isActive: true
+                },
+                games_reward: {
+                    pageId: 'games',
+                    type: 'info',
+                    title: 'Play & Earn Games Server Update',
+                    message: 'Play games for at least 2 minutes to record your score and claim bonus coins! All high scores are updated in real time.',
+                    isActive: true
+                },
+                global_welcome: {
+                    pageId: 'all',
+                    type: 'success',
+                    title: 'Double Coins Weekend Event!',
+                    message: 'Special Event Active: Earn double reward coins on Spin Wheel, Scratch Cards, and Daily Tasks today!',
+                    isActive: true
+                }
+            };
+
+            const p = presets[key];
+            if(!p) return;
+            showPageNoticeForm();
+            document.getElementById('notice-page-id').value = p.pageId;
+            document.getElementById('notice-type').value = p.type;
+            document.getElementById('notice-title').value = p.title;
+            document.getElementById('notice-message').value = p.message;
+            document.getElementById('notice-active').checked = p.isActive;
+        }
+
+        function deleteDoc(col, id) { if(confirm("Delete?")) db.collection(col).doc(id).delete(); }
+    </script>
+</body>
+</html>

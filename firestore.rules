@@ -1,0 +1,10 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Open read and write access for TaskEarn user app and admin panel
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

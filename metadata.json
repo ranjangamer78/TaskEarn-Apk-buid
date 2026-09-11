@@ -1,0 +1,8 @@
+{
+  "name": "Remix  Remix Tasks Easy",
+  "description": "Earn rewards by completing simple tasks, watching ads, and playing games. A secure Android app for easy coin redemption.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
